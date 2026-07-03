@@ -1,7 +1,6 @@
 # Gradle
 .gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
 !gradle/wrapper/gradle-wrapper.properties
 
 # IDE
@@ -18,8 +17,10 @@ Thumbs.db
 
 # Java
 *.class
-*.jar
 *.war
+
+# Gradle wrapper JAR — must be committed for CI
+!gradle/wrapper/gradle-wrapper.jar
 
 # Minecraft
 run/
