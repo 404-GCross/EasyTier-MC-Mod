@@ -1,67 +1,49 @@
 plugins {
-    id 'java'
-    id 'net.fabricmc.fabric-loom' version '1.16.3'
+    id 'net.fabricmc.fabric-loom' version '1.16.3' apply false
 }
 
-def minecraftVersion = "1.21.8"
-def fabricApiVersion = "0.134.0+1.21.8"
+subprojects {
+    apply plugin: 'net.fabricmc.fabric-loom'
 
-group = "com.easytier"
-version = project.findProperty("mod_version") ?: "1.0.0"
+    base {
+        archivesName = "easytier-mcmod-${project.name}"
+    }
 
-base {
-    archivesName = "easytier-mcmod"
-}
+    loom {
+        splitEnvironmentSourceSets()
 
-loom {
-    splitEnvironmentSourceSets()
-
-    mods {
-        "easytier-mcmod" {
-            sourceSet sourceSets.main
-            sourceSet sourceSets.client
+        mods {
+            "easytier-mcmod" {
+                sourceSet sourceSets.main
+                sourceSet sourceSets.client
+            }
         }
     }
 
-    runs.configureEach {
-        ideConfigGenerated = true
+    loom {
+        runs.configureEach {
+            ideConfigGenerated = true
+        }
     }
 
-    // Force MERGED (obfuscated) Minecraft jar to enable Mojang mappings
-    minecraft {
-        configuration = net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfiguration.MERGED
+    dependencies {
+        implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     }
-}
 
-dependencies {
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-    minecraft "com.mojang:minecraft:${minecraftVersion}"
-    mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
-    productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
-}
-
-fabricApi {
-    configureDataGeneration() {
-        client = true
+    fabricApi {
+        configureDataGeneration() {
+            client = true
+        }
     }
-}
 
-tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
-}
+    tasks.withType(JavaCompile).configureEach {
+        it.options.release = 25
+    }
 
-java {
-    withSourcesJar()
+    java {
+        withSourcesJar()
 
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
-}
-
-processResources {
-    inputs.property "version", project.version
-    filesMatching("fabric.mod.json") {
-        expand "version": project.version
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = JavaVersion.VERSION_25
     }
 }
