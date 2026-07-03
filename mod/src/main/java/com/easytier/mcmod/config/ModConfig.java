@@ -24,6 +24,8 @@ public class ModConfig {
     public String networkSecret = "";
     public String listenUrl = "tcp://0.0.0.0:11010";
     public String peers = "";
+    public String ipv4 = "";
+    public boolean dhcp = true;
     public boolean enableEncryption = true;
     public boolean enableIpv6 = true;
 
@@ -91,6 +93,12 @@ public class ModConfig {
         if (!hostname.isEmpty()) {
             args.add("--hostname");
             args.add(hostname);
+        }
+        if (dhcp) {
+            args.add("-d");
+        } else if (!ipv4.isEmpty()) {
+            args.add("--ipv4");
+            args.add(ipv4.trim());
         }
         args.add("--default-protocol");
         args.add(defaultProtocol);

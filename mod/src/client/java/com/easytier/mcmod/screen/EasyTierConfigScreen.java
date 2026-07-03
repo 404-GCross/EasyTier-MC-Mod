@@ -16,7 +16,7 @@ public class EasyTierConfigScreen extends Screen {
     private int page;
     private int scrollY, maxScroll;
 
-    private EditBox hostnameField, networkNameField, networkSecretField, peersField;
+    private EditBox hostnameField, networkNameField, networkSecretField, peersField, ipv4Field;
 
     public EasyTierConfigScreen(Screen parent) {
         super(Component.translatable("easytier.title"));
@@ -85,6 +85,21 @@ public class EasyTierConfigScreen extends Screen {
         networkNameField = addRow("networkName", config.networkName, cx, y); y += 20;
         networkSecretField = addRow("networkSecret", config.networkSecret, cx, y); y += 20;
         peersField = addRow("peerUrl", config.peers, cx, y); y += 20;
+
+        // IP with DHCP toggle
+        String ipLabel = config.dhcp ? "DHCP" : "IPv4";
+        addText(cx - 150, y + 1, 0xAAAAAA, ipLabel);
+        if (!config.dhcp) {
+            ipv4Field = new EditBox(this.font, cx - 40, y, 100, 14, Component.empty());
+            ipv4Field.setValue(config.ipv4);
+            ipv4Field.setHint(Component.literal("10.1.1.1"));
+            ipv4Field.setMaxLength(15);
+            addRenderableWidget(ipv4Field);
+        }
+        addRenderableWidget(Button.builder(Component.literal(config.dhcp ? "Fix IP" : "Auto"),
+                b -> { config.dhcp = !config.dhcp; saveConfig(); build(); })
+                .bounds(cx + 65, y, 40, 14).build());
+        y += 20;
 
         // Big Start/Stop button
         addRenderableWidget(Button.builder(
@@ -206,6 +221,7 @@ public class EasyTierConfigScreen extends Screen {
         if (networkNameField != null) config.networkName = networkNameField.getValue();
         if (networkSecretField != null) config.networkSecret = networkSecretField.getValue();
         if (peersField != null) config.peers = peersField.getValue();
+        if (ipv4Field != null) config.ipv4 = ipv4Field.getValue();
         config.save(FabricLoader.getInstance().getConfigDir());
     }
     private void openFolder() {
