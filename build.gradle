@@ -5,7 +5,6 @@ plugins {
 
 def minecraftVersion = "1.21.8"
 def fabricApiVersion = "0.134.0+1.21.8"
-def loaderVersion = "0.16.0"
 
 group = "com.easytier"
 version = project.findProperty("mod_version") ?: "1.0.0"
@@ -30,22 +29,29 @@ loom {
 }
 
 dependencies {
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
     minecraft "com.mojang:minecraft:${minecraftVersion}"
-    mappings loom.layered() {
-        mappings("net.fabricmc:yarn:1.21.8+build.1:v2")
-    }
+    mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
-    implementation "net.fabricmc:fabric-loader:${loaderVersion}"
+    productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+}
+
+fabricApi {
+    configureDataGeneration() {
+        client = true
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+    it.options.release = 25
 }
 
 java {
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 processResources {
