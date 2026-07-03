@@ -67,10 +67,12 @@ public class EasyTierConfigScreen extends Screen {
         int gap = 3, totalW = total + gap * (ws.length - 1);
         int bx = cx - totalW / 2;
         for (int i = 0; i < ws.length; i++) {
-            if (as[i] == null) continue;
-            addRenderableWidget(Button.builder(Component.literal(ls[i]), b -> as[i].run())
-                    .bounds(bx, y, ws[i], 18).build());
-            bx += ws[i] + gap;
+            if (as[i] == null) { bx += ws[i] + gap; continue; }
+            final Runnable action = as[i];
+            final int w = ws[i];
+            addRenderableWidget(Button.builder(Component.literal(ls[i]), b -> action.run())
+                    .bounds(bx, y, w, 18).build());
+            bx += w + gap;
         }
     }
 
