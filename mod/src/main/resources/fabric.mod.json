@@ -23,12 +23,7 @@
       "com.easytier.mcmod.screen.ModMenuIntegration"
     ]
   },
-  "mixins": [
-    {
-      "config": "easytier-mcmod.client.mixins.json",
-      "environment": "client"
-    }
-  ],
+  "mixins": [],
   "depends": {
     "fabric-api": ">=0.100.0",
     "minecraft": ">=1.21.4"

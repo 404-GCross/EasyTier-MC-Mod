@@ -63,6 +63,9 @@ public class EasyTierModClient implements ClientModInitializer {
             }
         });
 
+        // Register title screen button (no Mixin needed)
+        TitleScreenHandler.register();
+
         // Register HUD overlay
         EasyTierHud.register();
     }
