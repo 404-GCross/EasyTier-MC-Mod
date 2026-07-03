@@ -11,21 +11,26 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
- * EasyTier config screen — simple main page, advanced on second level.
+ * EasyTier config screen — all pages use framed scrollable content + fixed bottom buttons.
  */
 public class EasyTierConfigScreen extends Screen {
     private final Screen parent;
     private final ModConfig config;
-    private boolean showingAdvanced;
 
-    // Main page fields
+    private enum Page { MAIN, ADVANCED, CORE }
+    private Page page = Page.MAIN;
+    private int scrollY, maxScroll;
+
+    // Main fields
     private EditBox hostnameField, networkNameField, networkSecretField, peerUrlField;
     private String connectorList = "(none)";
-    private String statusMsg = "";
-
-    // Core page fields
+    // Core fields
     private EditBox versionField;
     private String dlStatus = "";
+
+    // Frame layout
+    private int frameTop() { return 20; }
+    private int frameBot() { return this.height - 42; }
 
     public EasyTierConfigScreen(Screen parent) {
         super(Component.translatable("easytier.title"));
@@ -33,72 +38,68 @@ public class EasyTierConfigScreen extends Screen {
         this.config = EasyTierMod.getConfig();
     }
 
-    @Override
-    protected void init() { showingAdvanced = false; buildMain(); }
+    @Override protected void init() { page = Page.MAIN; scrollY = 0; buildWidgets(); }
+
+    private void buildWidgets() {
+        clearWidgets();
+        switch (page) {
+            case MAIN -> buildMain();
+            case ADVANCED -> buildAdvanced();
+            case CORE -> buildCore();
+        }
+    }
 
     // ============ MAIN ============
     private void buildMain() {
-        clearWidgets();
         int cx = this.width / 2;
-        int y = 28;
+        int frameH = frameBot() - frameTop();
+        int y = frameTop() + 4 - scrollY;
 
         // Status
+        String ver = NativeLoader.getCurrentVersion();
         var proc = EasyTierMod.getEasyTierProcess();
         boolean running = proc != null && proc.isRunning();
-        String ver = NativeLoader.getCurrentVersion();
-        if (!NativeLoader.isInstalled()) statusMsg = t("easytier.status.not_installed");
-        else if (running) statusMsg = "§a" + t("easytier.status.running") + " §7(v" + ver + ")";
-        else statusMsg = "§7" + t("easytier.status.stopped") + " (v" + ver + ")";
+        String status;
+        if (!NativeLoader.isInstalled()) status = "§c" + t("easytier.status.not_installed");
+        else if (running) status = "§a" + t("easytier.status.running") + " (v" + ver + ")";
+        else status = "§7" + t("easytier.status.stopped") + " (v" + ver + ")";
+        label(cx, y, status); y += 18;
 
-        addRenderableWidget(new MultiLineTextWidget(cx - 100, y,
-                Component.literal(statusMsg), this.font));
-        y += 20;
-
-        // Fields
         hostnameField = field(cx, y, 180, "easytier.hostname", "easytier.hostname.hint", config.hostname); y += 22;
         networkNameField = field(cx, y, 180, "easytier.network_name", "easytier.network_name.hint", config.networkName); y += 22;
         networkSecretField = field(cx, y, 180, "easytier.network_secret", "easytier.network_secret.hint", config.networkSecret); y += 22;
-
-        // Peer URL + Add/List
         peerUrlField = field(cx, y, 240, "easytier.peer_url", "easytier.peer_url.hint", ""); y += 1;
         btn(cx + 125, y, 20, "+", () -> addConnector());
         btn(cx + 148, y, 40, t("easytier.peers"), () -> refreshConnectors());
         y += 20;
-        addRenderableWidget(new MultiLineTextWidget(cx - 120, y,
-                Component.literal("§7" + connectorList), this.font));
-        y += 18;
-
-        // Bottom bar
-        int botY = this.height - 28;
+        label(cx, y, "§7" + connectorList); y += 18;
 
         // Start/Stop button
         addRenderableWidget(Button.builder(
                 Component.literal(running ? "§c" + t("easytier.stop") : "§a" + t("easytier.start")),
-                btn -> toggleProcess()
-        ).bounds(this.width / 2 - 55, botY - 10, 110, 20).build());
+                b -> toggleProcess()
+        ).bounds(cx - 55, y + 2, 110, 22).build());
+        y += 30;
 
-        // Four equal bottom buttons
+        y += scrollY;
+        maxScroll = Math.max(0, y - (frameTop() + frameH));
+
+        // Fixed bottom buttons
         int bw = 48, gap = 3, bx = this.width / 2 - (bw * 4 + gap * 3) / 2;
-        btn(bx, botY + 12, bw, t("easytier.advanced"), () -> buildAdvanced()); bx += bw + gap;
-        btn(bx, botY + 12, bw, t("easytier.core"), () -> buildCorePage()); bx += bw + gap;
-        btn(bx, botY + 12, bw, t("easytier.save"), () -> saveAndClose()); bx += bw + gap;
-        btn(bx, botY + 12, bw, t("easytier.back"), () -> onClose());
+        int botY = frameBot() + 4;
+        fixedBtn(bx, botY, bw, t("easytier.advanced"), () -> switchPage(Page.ADVANCED)); bx += bw + gap;
+        fixedBtn(bx, botY, bw, t("easytier.core"), () -> switchPage(Page.CORE)); bx += bw + gap;
+        fixedBtn(bx, botY, bw, t("easytier.save"), () -> saveAndClose()); bx += bw + gap;
+        fixedBtn(bx, botY, bw, t("easytier.back"), () -> onClose());
     }
 
     // ============ ADVANCED ============
-    private int advScrollY = 0, advMaxScroll = 0;
-
     private void buildAdvanced() {
-        showingAdvanced = true; advScrollY = 0;
-        clearWidgets();
         int cx = this.width / 2;
-        int frameTop = 18, frameH = this.height - frameTop - 44;
-        int y = frameTop + 5;
+        int frameH = frameBot() - frameTop();
+        int y = frameTop() + 4 - scrollY;
 
-        // Build content with scroll offset
-        y -= advScrollY;
-
-        addTitle(y, "easytier.advanced.title"); y += 20;
+        title(y, "easytier.advanced.title"); y += 20;
         toggle(cx, y, "easytier.encryption", config.enableEncryption, v -> config.enableEncryption = v); y += 18;
         toggle(cx, y, "easytier.ipv6", config.enableIpv6, v -> config.enableIpv6 = v); y += 18;
         toggle(cx, y, "easytier.latency_first", config.latencyFirst, v -> config.latencyFirst = v); y += 18;
@@ -114,52 +115,22 @@ public class EasyTierConfigScreen extends Screen {
         field(cx, y, 240, "easytier.api_mirror", null, config.apiMirror); y += 20;
         field(cx, y, 240, "easytier.dl_mirror", null, config.downloadMirror); y += 24;
 
-        y += advScrollY;
-        advMaxScroll = Math.max(0, y - (frameTop + frameH));
+        y += scrollY;
+        maxScroll = Math.max(0, y - (frameTop() + frameH));
 
-        // Fixed bottom buttons
-        int botY = this.height - 28;
-        btn(this.width / 2 - 80, botY, 70, t("easytier.back"), () -> { saveConfig(); buildMain(); });
-        btn(this.width / 2 + 10, botY, 70, t("easytier.save"), () -> { saveConfig(); buildMain(); });
-    }
-
-    @Override
-    public boolean mouseScrolled(double mx, double my, double h, double v) {
-        if (showingAdvanced) {
-            advScrollY = (int) Math.clamp(advScrollY - v * 20, 0, advMaxScroll);
-            buildAdvanced();
-            return true;
-        }
-        return super.mouseScrolled(mx, my, h, v);
-    }
-
-    @Override
-    public void render(GuiGraphics ctx, int mx, int my, float delta) {
-        super.render(ctx, mx, my, delta);
-        if (showingAdvanced) {
-            // Draw frame around content
-            int frameX = 3, frameY = 18, frameW = this.width - 6, frameH = this.height - frameY - 44;
-            ctx.fill(frameX, frameY, frameX + frameW, frameY + frameH, 0x20FFFFFF);
-            ctx.renderOutline(frameX, frameY, frameW, frameH, 0x88AAAAAA);
-            if (advMaxScroll > 0) {
-                int barH = Math.max(12, (int)((float)frameH / (frameH + advMaxScroll) * frameH));
-                int barY = frameY + (int)((float)advScrollY / advMaxScroll * (frameH - barH));
-                ctx.fill(frameX + frameW - 3, barY, frameX + frameW, barY + barH, 0x66FFFFFF);
-            }
-        }
+        int botY = frameBot() + 4;
+        fixedBtn(this.width / 2 - 86, botY, 80, t("easytier.back"), () -> switchPage(Page.MAIN));
+        fixedBtn(this.width / 2 + 6, botY, 80, t("easytier.save"), () -> switchPage(Page.MAIN));
     }
 
     // ============ CORE ============
-    private void buildCorePage() {
-        showingAdvanced = true;
-        clearWidgets();
+    private void buildCore() {
         int cx = this.width / 2;
-        int y = 22;
-        addTitle(y, "easytier.core.title"); y += 20;
+        int frameH = frameBot() - frameTop();
+        int y = frameTop() + 4 - scrollY;
 
-        addRenderableWidget(new MultiLineTextWidget(cx - 100, y,
-                Component.literal("§e" + t("easytier.core.current") + NativeLoader.getCurrentVersion()), this.font));
-        y += 18;
+        title(y, "easytier.core.title"); y += 20;
+        label(cx, y, "§e" + t("easytier.core.current") + NativeLoader.getCurrentVersion()); y += 18;
 
         versionField = new EditBox(this.font, cx - 70, y, 110, 20, Component.empty());
         versionField.setHint(Component.translatable("easytier.core.version_hint"));
@@ -167,32 +138,33 @@ public class EasyTierConfigScreen extends Screen {
         btn(cx + 45, y, 50, t("easytier.core.versions"), () -> fetchVersions());
         btn(cx + 100, y, 50, t("easytier.core.download"), () -> downloadVersion());
         y += 24;
-
-        addRenderableWidget(new MultiLineTextWidget(cx - 110, y,
-                Component.literal("§7" + dlStatus), this.font));
-        y += 22;
-
+        label(cx, y, "§7" + dlStatus); y += 22;
         field(cx, y, 240, "easytier.dl_mirror", null, config.downloadMirror); y += 24;
 
-        int botY = this.height - 28;
-        btn(this.width / 2 - 35, botY, 70, t("easytier.back"), () -> { saveConfig(); buildMain(); });
+        y += scrollY;
+        maxScroll = Math.max(0, y - (frameTop() + frameH));
+
+        int botY = frameBot() + 4;
+        fixedBtn(this.width / 2 - 40, botY, 80, t("easytier.back"), () -> switchPage(Page.MAIN));
     }
 
-    // ============ HELPERS ============
-    private String t(String key) {
-        return Component.translatable(key).getString();
-    }
+    // ============ COMMON WIDGETS ============
+    private void switchPage(Page p) { saveConfig(); page = p; scrollY = 0; buildWidgets(); }
 
-    private void addTitle(int y, String key) {
+    private void title(int y, String key) {
         addRenderableWidget(new MultiLineTextWidget(this.width / 2 - 50, y,
                 Component.translatable(key).withColor(0xFFAA00), this.font));
     }
 
+    private void label(int cx, int y, String text) {
+        addRenderableWidget(new MultiLineTextWidget(cx - text.length() * 3, y,
+                Component.literal(text), this.font));
+    }
+
     private EditBox field(int cx, int y, int w, String labelKey, String hintKey, String value) {
-        if (labelKey != null) {
+        if (labelKey != null)
             addRenderableWidget(new MultiLineTextWidget(cx - w / 2 - 80, y,
                     Component.translatable(labelKey), this.font));
-        }
         EditBox f = new EditBox(this.font, cx - w / 2, y, w, 16, Component.empty());
         f.setValue(value != null ? value : "");
         if (hintKey != null) f.setHint(Component.translatable(hintKey));
@@ -202,9 +174,8 @@ public class EasyTierConfigScreen extends Screen {
     }
 
     private void toggle(int cx, int y, String key, boolean val, java.util.function.Consumer<Boolean> setter) {
-        var btn = CycleButton.onOffBuilder(val).create(cx - 80, y, 160, 16,
-                Component.translatable(key), (b, v) -> setter.accept(v));
-        addRenderableWidget(btn);
+        addRenderableWidget(CycleButton.onOffBuilder(val).create(cx - 80, y, 160, 16,
+                Component.translatable(key), (b, v) -> setter.accept(v)));
     }
 
     private void btn(int x, int y, int w, String label, Runnable action) {
@@ -212,49 +183,79 @@ public class EasyTierConfigScreen extends Screen {
                 .bounds(x, y, w, 16).build());
     }
 
+    private void fixedBtn(int x, int y, int w, String label, Runnable action) {
+        addRenderableWidget(Button.builder(Component.literal(label), b -> action.run())
+                .bounds(x, y, w, 18).build());
+    }
+
+    // ============ SCROLL + RENDER ============
+    @Override
+    public boolean mouseScrolled(double mx, double my, double h, double v) {
+        scrollY = (int) Math.clamp(scrollY - v * 20, 0, maxScroll);
+        buildWidgets();
+        return true;
+    }
+
+    @Override
+    public void render(GuiGraphics ctx, int mx, int my, float delta) {
+        super.render(ctx, mx, my, delta);
+        // Frame around content
+        int fx = 3, fy = frameTop(), fw = this.width - 6, fh = frameBot() - frameTop();
+        ctx.fill(fx, fy, fx + fw, fy + fh, 0x15FFFFFF);
+        ctx.renderOutline(fx, fy, fw, fh, 0x88AAAAAA);
+        // Scrollbar
+        if (maxScroll > 0) {
+            int barH = Math.max(12, (int)((float)fh / (fh + maxScroll) * fh));
+            int barY = fy + (int)((float)scrollY / maxScroll * (fh - barH));
+            ctx.fill(fx + fw - 3, barY, fx + fw, barY + barH, 0x55FFFFFF);
+        }
+    }
+
     // ============ ACTIONS ============
+    private String t(String key) { return Component.translatable(key).getString(); }
+
     private void toggleProcess() {
         var proc = EasyTierMod.getEasyTierProcess();
         if (proc != null && proc.isRunning()) EasyTierMod.stopEasyTier();
         else EasyTierMod.startEasyTier();
-        buildMain();
+        buildWidgets();
     }
 
     private void addConnector() {
         String url = peerUrlField != null ? peerUrlField.getValue().trim() : "";
-        if (url.isEmpty()) { connectorList = t("easytier.peer_url.hint"); buildMain(); return; }
+        if (url.isEmpty()) return;
         EasyTierCli.execute(config, "connector", "add", url)
-                .thenAccept(r -> { connectorList = "Added"; buildMain(); })
-                .exceptionally(e -> { connectorList = "Error"; buildMain(); return null; });
+                .thenAccept(r -> { connectorList = "Added"; buildWidgets(); })
+                .exceptionally(e -> { connectorList = "Error"; buildWidgets(); return null; });
     }
 
     private void refreshConnectors() {
         connectorList = "...";
         EasyTierCli.execute(config, "connector", "list").thenAccept(r -> {
-            connectorList = r.trim().isEmpty() ? t("easytier.peers.none") : r.trim().lines().count() + " peers";
-            buildMain();
-        }).exceptionally(e -> { connectorList = "Error"; buildMain(); return null; });
+            connectorList = r.trim().isEmpty() ? t("easytier.peers.none")
+                    : r.trim().lines().count() + " peers";
+            buildWidgets();
+        }).exceptionally(e -> { connectorList = "Error"; buildWidgets(); return null; });
     }
 
     private void fetchVersions() {
         dlStatus = t("easytier.core.fetching");
         NativeLoader.fetchAvailableVersions().thenAccept(vs -> {
-            if (vs.isEmpty()) { dlStatus = t("easytier.core.no_versions"); buildCorePage(); return; }
+            if (vs.isEmpty()) { dlStatus = t("easytier.core.no_versions"); buildWidgets(); return; }
             versionField.setValue(vs.get(0).tag);
             var sb = new StringBuilder();
-            for (int i = 0; i < Math.min(10, vs.size()); i++)
-                sb.append(vs.get(i).tag).append("  ");
+            for (int i = 0; i < Math.min(10, vs.size()); i++) sb.append(vs.get(i).tag).append("  ");
             dlStatus = sb.toString();
-            buildCorePage();
-        }).exceptionally(e -> { dlStatus = "Error"; buildCorePage(); return null; });
+            buildWidgets();
+        }).exceptionally(e -> { dlStatus = "Error"; buildWidgets(); return null; });
     }
 
     private void downloadVersion() {
         String v = versionField != null ? versionField.getValue().trim() : "";
-        if (v.isEmpty()) { dlStatus = t("easytier.core.enter_version"); buildCorePage(); return; }
+        if (v.isEmpty()) { dlStatus = t("easytier.core.enter_version"); buildWidgets(); return; }
         dlStatus = "Downloading " + v + "...";
-        buildCorePage();
-        NativeLoader.downloadUpdate(v, msg -> { dlStatus = msg; buildCorePage(); });
+        buildWidgets();
+        NativeLoader.downloadUpdate(v, msg -> { dlStatus = msg; buildWidgets(); });
     }
 
     private void saveConfig() {
@@ -266,16 +267,9 @@ public class EasyTierConfigScreen extends Screen {
 
     private void saveAndClose() { saveConfig(); onClose(); }
 
-    @Override
-    public void onClose() {
+    @Override public void onClose() {
         saveConfig();
         if (this.minecraft != null) this.minecraft.setScreen(parent);
     }
-
     @Override public boolean isPauseScreen() { return false; }
-
-    @Override
-    public void render(GuiGraphics ctx, int mx, int my, float delta) {
-        super.render(ctx, mx, my, delta);
-    }
 }
