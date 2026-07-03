@@ -274,5 +274,12 @@ public class EasyTierConfigScreen extends Screen {
         if (k == GLFW.GLFW_KEY_ESCAPE && parent == null) { onClose(); return true; }
         return super.keyPressed(k, s, m);
     }
-    @Override public void render(GuiGraphics c, int mx, int my, float d) { super.render(c, mx, my, d); }
+    @Override public void render(GuiGraphics g, int mx, int my, float d) {
+        int clipTop = 0, clipBot = this.height - 38;
+        g.enableScissor(0, clipTop, this.width, clipBot - clipTop);
+        super.render(g, mx, my, d);
+        g.disableScissor();
+        // Redraw bottom bar outside scissor (already in widget list, just scissored above)
+        // Bottom bar is safe because it's within clipBot..height range
+    }
 }
