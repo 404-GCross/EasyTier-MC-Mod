@@ -2,12 +2,16 @@ package com.easytier.mcmod;
 
 import com.easytier.mcmod.config.ModConfig;
 import com.easytier.mcmod.hud.EasyTierHud;
+import com.easytier.mcmod.screen.EasyTierConfigScreen;
 import com.easytier.mcmod.screen.EasyTierScreen;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 public class EasyTierModClient implements ClientModInitializer {
@@ -29,6 +33,20 @@ public class EasyTierModClient implements ClientModInitializer {
                 "category.easytier-mcmod.main"
         ));
 
+        // Register client commands to open GUI
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommandManager.literal("easytier-gui").executes(ctx -> {
+                Minecraft.getInstance().tell(() ->
+                        Minecraft.getInstance().setScreen(new EasyTierScreen()));
+                return 1;
+            }));
+            dispatcher.register(ClientCommandManager.literal("easytier-config").executes(ctx -> {
+                Minecraft.getInstance().tell(() ->
+                        Minecraft.getInstance().setScreen(new EasyTierConfigScreen(null)));
+                return 1;
+            }));
+        });
+
         // Register tick handler for keybindings
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openScreenKey.consumeClick()) {
@@ -37,8 +55,11 @@ public class EasyTierModClient implements ClientModInitializer {
             while (toggleHudKey.consumeClick()) {
                 ModConfig config = EasyTierMod.getConfig();
                 config.hudEnabled = !config.hudEnabled;
-                // Save immediately
                 config.save(net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir());
+                if (Minecraft.getInstance().player != null) {
+                    Minecraft.getInstance().player.displayClientMessage(
+                            Component.literal("EasyTier HUD: " + (config.hudEnabled ? "§aON" : "§cOFF")), true);
+                }
             }
         });
 
