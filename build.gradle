@@ -26,6 +26,11 @@ loom {
     runs.configureEach {
         ideConfigGenerated = true
     }
+
+    // Force MERGED (obfuscated) Minecraft jar to enable Mojang mappings
+    minecraft {
+        configuration = net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfiguration.MERGED
+    }
 }
 
 dependencies {
