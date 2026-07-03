@@ -36,12 +36,12 @@ public class EasyTierModClient implements ClientModInitializer {
         // Register client commands to open GUI
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("easytier-gui").executes(ctx -> {
-                Minecraft.getInstance().tell(() ->
+                Minecraft.getInstance().execute(() ->
                         Minecraft.getInstance().setScreen(new EasyTierScreen()));
                 return 1;
             }));
             dispatcher.register(ClientCommandManager.literal("easytier-config").executes(ctx -> {
-                Minecraft.getInstance().tell(() ->
+                Minecraft.getInstance().execute(() ->
                         Minecraft.getInstance().setScreen(new EasyTierConfigScreen(null)));
                 return 1;
             }));
