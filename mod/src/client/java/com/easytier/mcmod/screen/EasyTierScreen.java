@@ -9,8 +9,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -19,359 +17,166 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Main management GUI for EasyTier.
- * Tab-based screen showing Status, Peers, Routes, and Logs.
+ * In-game monitoring panel — shows EasyTier status, peers, routes, logs.
+ * Config/download/setup is handled by EasyTierConfigScreen on the title screen.
  */
 public class EasyTierScreen extends Screen {
-    private static final int TAB_WIDTH = 80;
-    private static final int CONTENT_Y = 35;
-    private static final int CONTENT_X = 10;
+    private static final int TAB_W = 68;
+    private static final int CONTENT_X = 8;
+    private static final int CONTENT_Y = 32;
 
-    private enum Tab { STATUS, PEERS, ROUTES, LOGS, DOWNLOAD, CONFIG }
+    private enum Tab { STATUS, PEERS, ROUTES, LOGS }
     private Tab currentTab = Tab.STATUS;
 
-    // Cached data
     private String statusText = "Loading...";
     private List<String> peerLines = new ArrayList<>();
     private List<String> routeLines = new ArrayList<>();
     private List<String> logLines = new ArrayList<>();
-    private List<String> versionLines = new ArrayList<>();
-    private String downloadVersionText = "";
 
     private int scrollOffset = 0;
-    private static final int MAX_VISIBLE_LINES = 20;
 
     public EasyTierScreen() {
-        super(Component.translatable("screen.easytier-mcmod.main"));
+        super(Component.literal("EasyTier"));
     }
 
     @Override
     protected void init() {
-        int tabY = 10;
-        int tabX = 5;
+        // Tab bar
+        int tx = 4;
+        tab(tx, "Status", Tab.STATUS); tx += TAB_W + 1;
+        tab(tx, "Peers", Tab.PEERS); tx += TAB_W + 1;
+        tab(tx, "Routes", Tab.ROUTES); tx += TAB_W + 1;
+        tab(tx, "Logs", Tab.LOGS); tx += TAB_W + 1;
 
-        // Tab buttons
-        addRenderableWidget(Button.builder(
-                Component.literal("Status"),
-                btn -> switchTab(Tab.STATUS)
-        ).bounds(tabX, tabY, TAB_WIDTH, 20).build());
-        tabX += TAB_WIDTH + 2;
+        // Refresh
+        addRenderableWidget(Button.builder(Component.literal("↻"), b -> refreshData())
+                .bounds(this.width - 26, 6, 20, 20).build());
 
-        addRenderableWidget(Button.builder(
-                Component.literal("Peers"),
-                btn -> switchTab(Tab.PEERS)
-        ).bounds(tabX, tabY, TAB_WIDTH, 20).build());
-        tabX += TAB_WIDTH + 2;
+        // Scroll
+        addRenderableWidget(Button.builder(Component.literal("▲"), b -> scroll(-1))
+                .bounds(this.width - 26, this.height - 52, 20, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("▼"), b -> scroll(1))
+                .bounds(this.width - 26, this.height - 30, 20, 20).build());
 
-        addRenderableWidget(Button.builder(
-                Component.literal("Routes"),
-                btn -> switchTab(Tab.ROUTES)
-        ).bounds(tabX, tabY, TAB_WIDTH, 20).build());
-        tabX += TAB_WIDTH + 2;
-
-        addRenderableWidget(Button.builder(
-                Component.literal("Logs"),
-                btn -> switchTab(Tab.LOGS)
-        ).bounds(tabX, tabY, TAB_WIDTH, 20).build());
-        tabX += TAB_WIDTH + 2;
-
-        addRenderableWidget(Button.builder(
-                Component.literal("Downld"),
-                btn -> switchTab(Tab.DOWNLOAD)
-        ).bounds(tabX, tabY, TAB_WIDTH, 20).build());
-        tabX += TAB_WIDTH + 2;
-
-        addRenderableWidget(Button.builder(
-                Component.literal("Config"),
-                btn -> {
-                    if (this.minecraft != null) {
-                        this.minecraft.setScreen(new EasyTierConfigScreen(this));
-                    }
-                }
-        ).bounds(tabX, tabY, TAB_WIDTH, 20).build());
-        tabX += TAB_WIDTH + 2;
-
-        // Refresh button
-        addRenderableWidget(Button.builder(
-                Component.literal("↻"),
-                btn -> refreshData()
-        ).bounds(this.width - 30, 10, 20, 20).build());
-
-        // Scroll buttons
-        addRenderableWidget(Button.builder(
-                Component.literal("▲"),
-                btn -> { scrollOffset = Math.max(0, scrollOffset - 1); }
-        ).bounds(this.width - 30, this.height - 60, 20, 20).build());
-
-        addRenderableWidget(Button.builder(
-                Component.literal("▼"),
-                btn -> { scrollOffset++; }
-        ).bounds(this.width - 30, this.height - 35, 20, 20).build());
-
-        // Download tab widgets
-        int dlY = this.height - 80;
-        var dlVersionField = new EditBox(this.font, CONTENT_X, dlY, 150, 20, Component.literal(""));
-        dlVersionField.setHint(Component.literal("e.g. v2.6.4"));
-        dlVersionField.setValue(downloadVersionText);
-        dlVersionField.setResponder(s -> downloadVersionText = s);
-        addRenderableWidget(dlVersionField);
-
-        addRenderableWidget(Button.builder(
-                Component.literal("Fetch"),
-                btn -> {
-                    versionLines.clear();
-                    versionLines.add("Fetching...");
-                    NativeLoader.fetchAvailableVersions().thenAccept(versions -> {
-                        versionLines.clear();
-                        if (versions.isEmpty()) {
-                            versionLines.add("No versions found. Check mirror settings.");
-                        } else {
-                            versionLines.add("--- Available Versions ---");
-                            for (int i = 0; i < Math.min(20, versions.size()); i++) {
-                                var v = versions.get(i);
-                                versionLines.add(v.tag + (v.prerelease ? " [pre]" : "") + " - " + v.name);
-                            }
-                            dlVersionField.setValue(versions.get(0).tag);
-                            downloadVersionText = versions.get(0).tag;
-                        }
-                    }).exceptionally(e -> {
-                        versionLines.clear();
-                        versionLines.add("Error: " + e.getMessage());
-                        return null;
-                    });
-                }
-        ).bounds(CONTENT_X + 155, dlY, 50, 20).build());
-
-        addRenderableWidget(Button.builder(
-                Component.literal("Download"),
-                btn -> {
-                    String v = downloadVersionText;
-                    if (v.isEmpty()) {
-                        versionLines.add(0, "Enter a version tag first!");
-                        return;
-                    }
-                    versionLines.add(0, "Downloading " + v + "...");
-                    NativeLoader.downloadUpdate(v, msg -> {
-                        versionLines.add(0, msg);
-                    }).thenAccept(success -> {
-                        versionLines.add(0, success ? "Done! Use /easytier start" : "Download failed!");
-                    });
-                }
-        ).bounds(CONTENT_X + 210, dlY, 70, 20).build());
-
-        // Done button
-        addRenderableWidget(Button.builder(
-                Component.translatable("gui.done"),
-                btn -> onClose()
-        ).bounds(this.width / 2 - 50, this.height - 25, 100, 20).build());
+        // Done
+        addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
+                .bounds(this.width / 2 - 50, this.height - 26, 100, 20).build());
 
         refreshData();
     }
 
-    private void switchTab(Tab tab) {
-        currentTab = tab;
-        scrollOffset = 0;
-        refreshData();
+    private void tab(int x, String label, Tab tab) {
+        addRenderableWidget(Button.builder(Component.literal(label), b -> {
+            currentTab = tab; scrollOffset = 0; refreshData();
+        }).bounds(x, 6, TAB_W, 20).build());
+    }
+
+    private void scroll(int dir) {
+        scrollOffset = Math.max(0, scrollOffset + dir);
     }
 
     private void refreshData() {
         var config = EasyTierMod.getConfig();
 
         switch (currentTab) {
-            case STATUS -> CompletableFuture.runAsync(() -> {
+            case STATUS -> CompletableFuture.runAsync(() ->
                 EasyTierCli.executeJson(config, "node", "info").thenAccept(json -> {
                     if (json instanceof JsonObject obj) {
-                        StringBuilder sb = new StringBuilder();
-                        sb.append("EasyTier Version: ").append(NativeLoader.getCurrentVersion()).append("\n");
-                        appendIfPresent(obj, sb, "Virtual IP", "virtual_ip");
-                        appendIfPresent(obj, sb, "Hostname", "hostname");
-                        appendIfPresent(obj, sb, "Peer ID", "peer_id");
-                        appendIfPresent(obj, sb, "STUN Type", "stun_type");
-                        appendIfPresent(obj, sb, "Public IPv4", "public_ipv4");
-                        appendIfPresent(obj, sb, "Public IPv6", "public_ipv6");
-                        sb.append("\n");
-
+                        var sb = new StringBuilder();
+                        sb.append("§eEasyTier ").append(NativeLoader.getCurrentVersion()).append("\n");
+                        append(obj, sb, "Virtual IP"); append(obj, sb, "Hostname");
+                        append(obj, sb, "Peer ID"); append(obj, sb, "STUN Type");
+                        append(obj, sb, "Public IPv4"); append(obj, sb, "Public IPv6");
                         var proc = EasyTierMod.getEasyTierProcess();
-                        sb.append("Process: ").append(proc != null && proc.isRunning() ? "§aRunning" : "§cStopped");
+                        sb.append("\nProcess: ").append(proc != null && proc.isRunning() ? "§aRunning" : "§cStopped");
                         statusText = sb.toString();
                     }
-                }).exceptionally(e -> {
-                    statusText = "§cError: " + e.getMessage() + "\n\n§7Is EasyTier running?";
-                    return null;
-                });
-            });
+                }).exceptionally(e -> { statusText = "§c" + e.getMessage(); return null; })
+            );
 
-            case PEERS -> CompletableFuture.runAsync(() -> {
+            case PEERS -> CompletableFuture.runAsync(() ->
                 EasyTierCli.executeJson(config, "peer", "list").thenAccept(json -> {
                     peerLines.clear();
-                    if (json instanceof JsonArray arr && arr.isEmpty()) {
-                        peerLines.add("No peers connected");
-                    } else if (json instanceof JsonArray arr) {
-                        peerLines.add(String.format("%-18s %-20s %8s %6s %6s",
-                                "IP", "Hostname", "Lat(ms)", "Loss%", "NAT"));
-                        peerLines.add("-".repeat(70));
-                        for (JsonElement el : arr) {
-                            if (el instanceof JsonObject p) {
-                                peerLines.add(String.format("%-18s %-20s %8s %6s %6s",
-                                        str(p, "cidr", 18),
-                                        str(p, "hostname", 20),
-                                        str(p, "latMs", 8),
-                                        str(p, "lossRate", 6),
-                                        str(p, "natType", 6)));
+                    if (json instanceof JsonArray arr) {
+                        if (arr.isEmpty()) peerLines.add("No peers connected");
+                        else {
+                            peerLines.add(String.format("%-16s %-18s %6s %5s %5s", "IP","Hostname","Lat","Loss","NAT"));
+                            for (JsonElement el : arr) {
+                                if (el instanceof JsonObject p)
+                                    peerLines.add(String.format("%-16s %-18s %6s %5s %5s",
+                                            s(p,"cidr",16), s(p,"hostname",18),
+                                            s(p,"latMs",6), s(p,"lossRate",5), s(p,"natType",5)));
                             }
                         }
                     }
-                }).exceptionally(e -> {
-                    peerLines.clear();
-                    peerLines.add("§cError: " + e.getMessage());
-                    return null;
-                });
-            });
+                }).exceptionally(e -> { peerLines.add("§c"+e.getMessage()); return null; })
+            );
 
-            case ROUTES -> CompletableFuture.runAsync(() -> {
+            case ROUTES -> CompletableFuture.runAsync(() ->
                 EasyTierCli.executeJson(config, "route", "list").thenAccept(json -> {
                     routeLines.clear();
-                    if (json instanceof JsonArray arr && arr.isEmpty()) {
-                        routeLines.add("No routes available");
-                    } else if (json instanceof JsonArray arr) {
-                        routeLines.add(String.format("%-18s %-20s %-18s %6s %8s",
-                                "Target IP", "Hostname", "Next Hop", "Hops", "Latency"));
-                        routeLines.add("-".repeat(80));
-                        for (JsonElement el : arr) {
-                            if (el instanceof JsonObject r) {
-                                routeLines.add(String.format("%-18s %-20s %-18s %6s %8s",
-                                        str(r, "ipv4", 18),
-                                        str(r, "hostname", 20),
-                                        str(r, "nextHopIpv4", 18),
-                                        str(r, "pathLen", 6),
-                                        str(r, "pathLatency", 8)));
+                    if (json instanceof JsonArray arr) {
+                        if (arr.isEmpty()) routeLines.add("No routes");
+                        else {
+                            routeLines.add(String.format("%-16s %-16s %-16s %4s", "Target","NextHop","Host","Hops"));
+                            for (JsonElement el : arr) {
+                                if (el instanceof JsonObject r)
+                                    routeLines.add(String.format("%-16s %-16s %-16s %4s",
+                                            s(r,"ipv4",16), s(r,"nextHopIpv4",16),
+                                            s(r,"hostname",16), s(r,"pathLen",4)));
                             }
                         }
                     }
-                }).exceptionally(e -> {
-                    routeLines.clear();
-                    routeLines.add("§cError: " + e.getMessage());
-                    return null;
-                });
-            });
+                }).exceptionally(e -> { routeLines.add("§c"+e.getMessage()); return null; })
+            );
 
             case LOGS -> {
-                EasyTierProcess proc = EasyTierMod.getEasyTierProcess();
-                if (proc != null && proc.isRunning()) {
-                    logLines = proc.getRecentLogs(100);
-                } else {
-                    logLines = List.of("EasyTier is not running. Start it from the Config tab.");
-                }
-            }
-
-            case DOWNLOAD -> {
-                // Keep existing data, versions fetched on demand
-                if (versionLines.isEmpty()) {
-                    versionLines.add("Click 'Fetch Versions' to list available releases.");
-                    versionLines.add("Then enter a version tag and click 'Download'.");
-                }
+                var proc = EasyTierMod.getEasyTierProcess();
+                logLines = (proc != null && proc.isRunning())
+                        ? proc.getRecentLogs(100)
+                        : List.of("EasyTier not running.");
             }
         }
     }
 
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
-
-        // Title
-        context.drawCenteredString(this.font, this.title, this.width / 2, 5, 0xFFFFFF);
+    public void render(GuiGraphics ctx, int mx, int my, float delta) {
+        super.render(ctx, mx, my, delta);
+        ctx.drawCenteredString(this.font, "EasyTier Monitor", this.width / 2, 3, 0xFFFFFF);
 
         int y = CONTENT_Y;
-
         switch (currentTab) {
-            case STATUS -> renderStatus(context, y);
-            case PEERS -> renderLines(context, y, peerLines);
-            case ROUTES -> renderLines(context, y, routeLines);
-            case LOGS -> renderLines(context, y, logLines);
-            case DOWNLOAD -> {
-                context.drawString(this.font, "EasyTier: " + NativeLoader.getCurrentVersion(), CONTENT_X, y, 0xFFAA00);
-                y += 14;
-                renderLines(context, y, versionLines);
-            }
-            case CONFIG -> {
-                // Config tab just shows quick summary; full edit via Config button
-                var c = EasyTierMod.getConfig();
-                context.drawString(this.font, "Network: " + c.networkName, CONTENT_X, y, 0xAAAAAA);
-                y += 12;
-                context.drawString(this.font, "RPC: " + c.rpcHost + ":" + c.rpcPort, CONTENT_X, y, 0xAAAAAA);
-                y += 12;
-                context.drawString(this.font, "Protocol: " + c.defaultProtocol, CONTENT_X, y, 0xAAAAAA);
-                y += 12;
-                context.drawString(this.font, "Auto-start: " + (c.autoStart ? "Yes" : "No"), CONTENT_X, y, 0xAAAAAA);
-                y += 12;
-                context.drawString(this.font, "Encryption: " + (c.enableEncryption ? "On" : "Off"), CONTENT_X, y, 0xAAAAAA);
-                y += 12;
-                context.drawString(this.font, "", CONTENT_X, y, 0xAAAAAA);
-                y += 12;
-                context.drawString(this.font, "Click 'Config' tab button to edit all settings", CONTENT_X, y, 0xFFAA00);
-            }
+            case STATUS -> renderLines(ctx, y, statusText.split("\n"));
+            case PEERS -> renderLines(ctx, y, peerLines.toArray(new String[0]));
+            case ROUTES -> renderLines(ctx, y, routeLines.toArray(new String[0]));
+            case LOGS -> renderLines(ctx, y, logLines.toArray(new String[0]));
         }
     }
 
-    private void renderStatus(GuiGraphics context, int y) {
-        String[] lines = statusText.split("\n");
-        for (String line : lines) {
-            context.drawString(this.font, line, CONTENT_X, y, 0xCCCCCC);
-            y += 12;
-        }
-    }
-
-    private void renderLines(GuiGraphics context, int startY, List<String> lines) {
+    private void renderLines(GuiGraphics ctx, int startY, String[] lines) {
         int y = startY;
-        int maxLines = (this.height - startY - 70) / 12;
-        int fromIndex = Math.max(0, Math.min(scrollOffset, Math.max(0, lines.size() - maxLines)));
-
-        for (int i = fromIndex; i < Math.min(lines.size(), fromIndex + maxLines); i++) {
-            String line = lines.get(i);
-            // Handle color codes
-            int color = 0xCCCCCC;
-            if (line.startsWith("§c")) color = 0xFF5555;
-            else if (line.startsWith("§a")) color = 0x55FF55;
-            else if (line.startsWith("§e")) color = 0xFFFF55;
-            else if (line.startsWith("§7")) color = 0x888888;
-
-            String displayLine = line.replaceAll("§[0-9a-f]", "");
-            context.drawString(this.font, displayLine, CONTENT_X, y, color);
+        int maxVis = (this.height - startY - 60) / 12;
+        int from = Math.max(0, Math.min(scrollOffset, Math.max(0, lines.length - maxVis)));
+        for (int i = from; i < Math.min(lines.length, from + maxVis); i++) {
+            String line = lines[i].replaceAll("§[0-9a-fA-F]", "");
+            int color = lines[i].startsWith("§c") ? 0xFF5555 : lines[i].startsWith("§a") ? 0x55FF55
+                    : lines[i].startsWith("§e") ? 0xFFFF55 : 0xCCCCCC;
+            ctx.drawString(this.font, line, CONTENT_X, y, color);
             y += 12;
         }
-
-        if (lines.isEmpty()) {
-            context.drawString(this.font, "Loading...", CONTENT_X, y, 0x888888);
-        }
+        if (lines.length == 0) ctx.drawString(this.font, "Loading...", CONTENT_X, y, 0x888888);
     }
 
-    @Override
-    public void onClose() {
-        if (this.minecraft != null) {
-            this.minecraft.setScreen(null);
-        }
-    }
+    @Override public void onClose() { if (this.minecraft != null) this.minecraft.setScreen(null); }
+    @Override public boolean isPauseScreen() { return false; }
 
-    @Override
-    public boolean isPauseScreen() {
-        return false;
+    private static void append(JsonObject obj, StringBuilder sb, String key) {
+        if (obj.has(key) && !obj.get(key).isJsonNull())
+            sb.append(key).append(": ").append(obj.get(key).getAsString()).append("\n");
     }
-
-    // Helper methods
-    private static void appendIfPresent(JsonObject obj, StringBuilder sb, String label, String key) {
-        if (obj.has(key) && !obj.get(key).isJsonNull()) {
-            sb.append(label).append(": ").append(obj.get(key).getAsString()).append("\n");
-        }
-    }
-
-    private static String str(JsonObject obj, String key, int maxLen) {
-        if (!obj.has(key) || obj.get(key).isJsonNull()) return pad("-", maxLen);
-        String val = obj.get(key).getAsString();
-        return pad(val.length() > maxLen ? val.substring(0, maxLen) : val, maxLen);
-    }
-
-    private static String pad(String s, int len) {
-        if (s.length() >= len) return s;
-        return s + " ".repeat(len - s.length());
+    private static String s(JsonObject obj, String key, int max) {
+        if (!obj.has(key) || obj.get(key).isJsonNull()) return "-";
+        String v = obj.get(key).getAsString();
+        return v.length() > max ? v.substring(0, max) : v;
     }
 }
