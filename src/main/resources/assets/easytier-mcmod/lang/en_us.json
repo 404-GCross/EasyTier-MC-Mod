@@ -1,0 +1,50 @@
+{
+  "category.easytier-mcmod.main": "EasyTier Mod",
+  "key.easytier-mcmod.open_screen": "Open EasyTier Menu",
+  "key.easytier-mcmod.toggle_hud": "Toggle EasyTier HUD",
+
+  "screen.easytier-mcmod.main": "EasyTier Management",
+  "screen.easytier-mcmod.config": "EasyTier Configuration",
+
+  "config.easytier-mcmod.section.network": "Network Settings",
+  "config.easytier-mcmod.network_name": "Network Name",
+  "config.easytier-mcmod.network_secret": "Network Secret",
+  "config.easytier-mcmod.listen_url": "Listen URLs",
+  "config.easytier-mcmod.rpc_host": "RPC Host",
+  "config.easytier-mcmod.rpc_port": "RPC Port",
+  "config.easytier-mcmod.default_protocol": "Default Protocol",
+
+  "config.easytier-mcmod.section.flags": "Feature Flags",
+  "config.easytier-mcmod.auto_start": "Auto Start",
+  "config.easytier-mcmod.enable_encryption": "Encryption",
+  "config.easytier-mcmod.enable_ipv6": "IPv6",
+  "config.easytier-mcmod.latency_first": "Latency First",
+  "config.easytier-mcmod.enable_kcp": "KCP Proxy",
+  "config.easytier-mcmod.enable_quic": "QUIC Proxy",
+  "config.easytier-mcmod.disable_p2p": "Disable P2P",
+
+  "config.easytier-mcmod.section.hud": "HUD Settings",
+  "config.easytier-mcmod.hud_enabled": "HUD Enabled",
+  "config.easytier-mcmod.hud_position": "HUD Position",
+  "config.easytier-mcmod.hud_position.top_left": "Top Left",
+  "config.easytier-mcmod.hud_position.top_right": "Top Right",
+  "config.easytier-mcmod.hud_position.bottom_left": "Bottom Left",
+  "config.easytier-mcmod.hud_position.bottom_right": "Bottom Right",
+  "config.easytier-mcmod.hud_color": "HUD Color",
+  "config.easytier-mcmod.hud_color.green": "Green",
+  "config.easytier-mcmod.hud_color.white": "White",
+  "config.easytier-mcmod.hud_color.yellow": "Yellow",
+  "config.easytier-mcmod.hud_color.red": "Red",
+  "config.easytier-mcmod.hud_color.cyan": "Cyan",
+
+  "config.easytier-mcmod.section.actions": "Actions",
+  "config.easytier-mcmod.install": "Install / Extract Binaries",
+  "config.easytier-mcmod.check_update": "Check for Updates",
+  "config.easytier-mcmod.start": "Start EasyTier",
+  "config.easytier-mcmod.stop": "Stop EasyTier",
+  "config.easytier-mcmod.save": "Save Configuration",
+
+  "message.easytier-mcmod.config_saved": "EasyTier config saved!",
+  "message.easytier-mcmod.install_done": "EasyTier binaries extracted successfully!",
+  "message.easytier-mcmod.checking_update": "Checking for updates..."
+}

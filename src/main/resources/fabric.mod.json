@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "easytier-mcmod",
+  "version": "1.0.0",
+  "name": "EasyTier Mod",
+  "description": "P2P VPN integration for Minecraft - manage EasyTier directly in-game",
+  "authors": ["EasyTier Community"],
+  "contact": {
+    "homepage": "https://easytier.cn",
+    "sources": "https://github.com/EasyTier/EasyTier"
+  },
+  "license": "MIT",
+  "icon": "assets/easytier-mcmod/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.easytier.mcmod.EasyTierMod"
+    ],
+    "client": [
+      "com.easytier.mcmod.EasyTierModClient"
+    ]
+  },
+  "mixins": [],
+  "depends": {
+    "fabric-api": ">=0.134.0",
+    "minecraft": ">=1.21.8"
+  }
+}

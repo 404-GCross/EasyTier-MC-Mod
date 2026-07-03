@@ -1,0 +1,54 @@
+plugins {
+    id 'java'
+    id 'net.fabricmc.fabric-loom' version '1.16.3'
+}
+
+def minecraftVersion = "1.21.8"
+def fabricApiVersion = "0.134.0+1.21.8"
+def loaderVersion = "0.16.0"
+
+group = "com.easytier"
+version = project.findProperty("mod_version") ?: "1.0.0"
+
+base {
+    archivesName = "easytier-mcmod"
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        "easytier-mcmod" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+
+    runs.configureEach {
+        ideConfigGenerated = true
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraftVersion}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+    implementation "net.fabricmc:fabric-loader:${loaderVersion}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
