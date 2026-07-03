@@ -114,21 +114,13 @@ public class EasyTierConfigScreen extends Screen {
         int cx = this.width / 2, y = 26 - scrollY, rh = 16;
         drawCentered(cx, y, t("easytier.advanced.title"), 0xFFAA00); y += rh + 2;
 
-        // Toggles — compact 2-column if wide enough
-        String[] keys = {"encryption","ipv6","latency_first","kcp_proxy","quic_proxy","disable_p2p"};
-        boolean[] vals = {config.enableEncryption,config.enableIpv6,config.latencyFirst,config.enableKcpProxy,config.enableQuicProxy,config.disableP2p};
-        java.util.function.Consumer<Boolean>[] sets = new java.util.function.Consumer[]{
-            v->config.enableEncryption=v, v->config.enableIpv6=v, v->config.latencyFirst=v,
-            v->config.enableKcpProxy=v, v->config.enableQuicProxy=v, v->config.disableP2p=v
-        };
-        int cols = this.width > 280 ? 2 : 1;
-        for (int i = 0; i < keys.length; i += cols) {
-            for (int j = 0; j < cols && i + j < keys.length; j++) {
-                int x = cols == 2 ? (j == 0 ? cx - 60 : cx + 10) : cx;
-                addToggleAbs(x, y, keys[i+j], vals[i+j], sets[i+j]);
-            }
-            y += rh + 1;
-        }
+        // Toggles
+        addToggle(cx, y, "encryption", config.enableEncryption, v -> config.enableEncryption = v); y += rh + 1;
+        addToggle(cx, y, "ipv6", config.enableIpv6, v -> config.enableIpv6 = v); y += rh + 1;
+        addToggle(cx, y, "latency_first", config.latencyFirst, v -> config.latencyFirst = v); y += rh + 1;
+        addToggle(cx, y, "kcp_proxy", config.enableKcpProxy, v -> config.enableKcpProxy = v); y += rh + 1;
+        addToggle(cx, y, "quic_proxy", config.enableQuicProxy, v -> config.enableQuicProxy = v); y += rh + 1;
+        addToggle(cx, y, "disable_p2p", config.disableP2p, v -> config.disableP2p = v);
         y += 4; drawHLine(y - 2); y += 4;
 
         addRow2("rpc_host", config.rpcHost, cx, y); y += rh + 2;
@@ -198,10 +190,7 @@ public class EasyTierConfigScreen extends Screen {
         f.setValue(val != null ? val : ""); f.setMaxLength(256); addRenderableWidget(f);
     }
     private void addToggle(int cx, int y, String key, boolean val, java.util.function.Consumer<Boolean> s) {
-        addToggleAbs(cx - 55, y, key, val, s);
-    }
-    private void addToggleAbs(int x, int y, String key, boolean val, java.util.function.Consumer<Boolean> s) {
-        addRenderableWidget(CycleButton.onOffBuilder(val).create(x, y, 105, 14,
+        addRenderableWidget(CycleButton.onOffBuilder(val).create(cx - 55, y, 105, 14,
                 Component.translatable("easytier." + key), (b, v) -> s.accept(v)));
     }
 
