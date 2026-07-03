@@ -30,6 +30,9 @@ public class EasyTierCli {
     public static CompletableFuture<String> execute(ModConfig config, String... args) {
         return CompletableFuture.supplyAsync(() -> {
             try {
+                if (!NativeLoader.isInstalled()) {
+                    throw new IOException("EasyTier is not installed. Use /easytier download <version> first.");
+                }
                 Path binDir = NativeLoader.getBinDir();
                 String cliName = System.getProperty("os.name").toLowerCase().contains("win")
                         ? "easytier-cli.exe" : "easytier-cli";

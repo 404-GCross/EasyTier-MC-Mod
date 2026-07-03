@@ -257,10 +257,7 @@ public class NativeLoader {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 Path binDir = getBinDir();
-                HttpClient client = HttpClient.newBuilder()
-                        .followRedirects(HttpClient.Redirect.ALWAYS)
-                        .connectTimeout(java.time.Duration.ofSeconds(15))
-                        .build();
+                HttpClient client = getClient();
 
                 String platformId = getPlatformId();
                 String githubBase = "https://github.com/EasyTier/EasyTier/releases/download/" + versionTag + "/";
