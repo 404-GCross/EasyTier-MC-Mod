@@ -149,10 +149,7 @@ public class EasyTierConfigScreen extends Screen {
         drawCentered(cx, y, "easytier-core + easytier-cli", 0xAAAAAA); y += 12;
 
         y += 4;
-        addRenderableWidget(Button.builder(Component.literal("Open Folder"), b -> {
-            try { java.awt.Desktop.getDesktop().open(NativeLoader.getBinDir().toFile()); }
-            catch (Exception ex) { EasyTierMod.LOGGER.error("Cannot open folder: {}", ex.getMessage()); }
-        }).bounds(cx - 44, y, 88, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("Open Folder"), b -> openFolder()).bounds(cx - 44, y, 88, 18).build());
     }
 
     // ============ WIDGET HELPERS ============
@@ -226,6 +223,22 @@ public class EasyTierConfigScreen extends Screen {
         if (networkSecretField != null) config.networkSecret = networkSecretField.getValue();
         config.save(FabricLoader.getInstance().getConfigDir());
     }
+    private void openFolder() {
+        try {
+            String dir = NativeLoader.getBinDir().toAbsolutePath().toString();
+            String os = System.getProperty("os.name").toLowerCase();
+            if (os.contains("win")) {
+                new ProcessBuilder("explorer", dir).start();
+            } else if (os.contains("mac")) {
+                new ProcessBuilder("open", dir).start();
+            } else {
+                new ProcessBuilder("xdg-open", dir).start();
+            }
+        } catch (Exception ex) {
+            EasyTierMod.LOGGER.error("Cannot open folder: {}", ex.getMessage());
+        }
+    }
+
     private void saveAndClose() { saveConfig(); onClose(); }
 
     @Override public void onClose() { saveConfig(); if (minecraft != null) minecraft.setScreen(parent); }
