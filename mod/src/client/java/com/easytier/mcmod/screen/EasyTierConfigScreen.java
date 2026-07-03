@@ -100,7 +100,7 @@ public class EasyTierConfigScreen extends Screen {
             ipv4Field.setValue(config.ipv4); ipv4Field.setHint(Component.literal("10.1.1.1"));
             ipv4Field.setMaxLength(15); addRenderableWidget(ipv4Field);
         }
-        addRenderableWidget(Button.builder(Component.literal(config.dhcp ? "Fix IP" : "Auto"),
+        addRenderableWidget(Button.builder(Component.literal(config.dhcp ? t("easytier.ip_fix") : t("easytier.ip_auto")),
                 b -> { config.dhcp = !config.dhcp; saveConfig(); build(); }).bounds(cx + 65, y, 40, 14).build());
         y += 22;
 
@@ -156,7 +156,7 @@ public class EasyTierConfigScreen extends Screen {
         drawHLine(y); y += 8;
 
         drawCentered(cx, y, "Download: github.com/EasyTier/EasyTier/releases", 0xFFFFFF); y += 16;
-        addRenderableWidget(Button.builder(Component.literal("Open in Browser"), b ->
+        addRenderableWidget(Button.builder(Component.literal(t("easytier.open_browser")), b ->
                 Util.getPlatform().openUri("https://github.com/EasyTier/EasyTier/releases"))
                 .bounds(cx - 50, y, 100, 16).build()); y += 20;
         drawCentered(cx, y, "Platform: " + plat, 0x888888); y += 14;
@@ -168,7 +168,7 @@ public class EasyTierConfigScreen extends Screen {
         drawCentered(cx, y, core + " → easytier-core" + ext, 0x55FF55); y += 12;
         drawCentered(cx, y, cli + " → easytier-cli" + ext, 0x55FF55); y += 16;
 
-        addRenderableWidget(Button.builder(Component.literal("Open Folder"), b -> openFolder())
+        addRenderableWidget(Button.builder(Component.literal(t("easytier.open_folder")), b -> openFolder())
                 .bounds(cx - 44, y, 88, 18).build());
     }
 

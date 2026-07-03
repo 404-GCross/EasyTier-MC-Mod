@@ -1,12 +1,13 @@
 {
   "category.easytier-mcmod.main": "EasyTier",
   "key.easytier-mcmod.open_screen": "打开EasyTier面板",
-  "key.easytier-mcmod.toggle_hud": "开关EasyTier HUD",
+  "key.easytier-mcmod.toggle_hud": "开关HUD",
 
   "easytier.title": "EasyTier 联机",
   "easytier.status.running": "运行中",
   "easytier.status.stopped": "已停止",
   "easytier.status.not_installed": "二进制未安装",
+  "easytier.version": "版本",
 
   "easytier.hostname": "主机名",
   "easytier.hostname.hint": "例如: Player1",
@@ -16,17 +17,19 @@
   "easytier.network_secret.hint": "留空不设密码",
   "easytier.peer_url": "服务器",
   "easytier.peer_url.hint": "tcp://IP:端口",
-  "easytier.peers": "节点",
-  "easytier.peers.none": "(无)",
 
   "easytier.start": "启动",
   "easytier.stop": "停止",
-
   "easytier.advanced": "高级",
   "easytier.core": "内核",
   "easytier.back": "返回",
   "easytier.save": "保存并关闭",
-  "easytier.cancel": "取消",
+
+  "easytier.ip_fix": "固定IP",
+  "easytier.ip_auto": "自动",
+  "easytier.open_browser": "打开浏览器",
+  "easytier.open_folder": "打开文件夹",
+  "easytier.download_from": "从 GitHub Releases 下载:",
 
   "easytier.advanced.title": "高级设置",
   "easytier.encryption": "加密",
@@ -43,5 +46,17 @@
   "easytier.hud": "HUD显示",
 
   "easytier.core.title": "内核管理",
-  "easytier.core.current": "当前版本: "
+  "easytier.core.current": "当前版本: ",
+  "easytier.core.platform": "你的平台: ",
+  "easytier.core.rename_hint": "改名后放入 .minecraft/easytier/bin/:",
+
+  "easytier.cmd.binary_not_found": "二进制文件未找到，请放入 .minecraft/easytier/bin/",
+  "easytier.cmd.starting": "启动中...",
+  "easytier.cmd.stopped": "已停止",
+  "easytier.cmd.restarting": "重启中...",
+  "easytier.cmd.added": "已添加: ",
+  "easytier.cmd.removed": "已删除: ",
+  "easytier.cmd.uninstalled": "已卸载",
+  "easytier.cmd.fetching": "查询中...",
+  "easytier.cmd.is_running": "EasyTier 未运行。请先启动。"
 }

@@ -30,7 +30,7 @@ public class TitleScreenHandler {
             int y = screen.height / 4 + 48;
 
             Screens.getButtons(screen).add(Button.builder(
-                    Component.literal("EasyTier"),
+                    Component.translatable("easytier.title"),
                     btn -> client.setScreen(new EasyTierConfigScreen(null))
             ).bounds(x, y, 72, 20).build());
         });
