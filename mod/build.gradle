@@ -6,4 +6,7 @@ dependencies {
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
     productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+
+    // ModMenu (optional — only for compile-time)
+    modCompileOnly "com.terraformersmc:modmenu:13.0.2"
 }
