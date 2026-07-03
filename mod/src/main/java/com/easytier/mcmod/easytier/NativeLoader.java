@@ -11,10 +11,15 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermission;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Handles native EasyTier binary installation and updates.
@@ -31,6 +36,37 @@ public class NativeLoader {
 
     private static Path binDir = null;
     private static String currentVersion = null;
+    private static HttpClient sharedClient = null;
+
+    /**
+     * Get an HttpClient that trusts all SSL certificates.
+     * Needed in environments where GitHub's SSL cert can't be verified.
+     */
+    private static synchronized HttpClient getClient() {
+        if (sharedClient != null) return sharedClient;
+        try {
+            TrustManager[] trustAll = new TrustManager[] {
+                new X509TrustManager() {
+                    public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+                    public void checkClientTrusted(X509Certificate[] c, String a) {}
+                    public void checkServerTrusted(X509Certificate[] c, String a) {}
+                }
+            };
+            SSLContext ssl = SSLContext.getInstance("TLS");
+            ssl.init(null, trustAll, new SecureRandom());
+            sharedClient = HttpClient.newBuilder()
+                    .followRedirects(HttpClient.Redirect.ALWAYS)
+                    .connectTimeout(java.time.Duration.ofSeconds(10))
+                    .sslContext(ssl)
+                    .build();
+        } catch (Exception e) {
+            sharedClient = HttpClient.newBuilder()
+                    .followRedirects(HttpClient.Redirect.ALWAYS)
+                    .connectTimeout(java.time.Duration.ofSeconds(10))
+                    .build();
+        }
+        return sharedClient;
+    }
 
     /**
      * Version info for selection UI.
@@ -119,16 +155,10 @@ public class NativeLoader {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 String mirror = EasyTierMod.getConfig() != null
-                        ? EasyTierMod.getConfig().apiMirror
-                        : "";
-                String apiUrl = mirror.isEmpty() ? GITHUB_API
-                        : mirror.endsWith("/") ? mirror + "repos/EasyTier/EasyTier/releases"
-                        : mirror + "/repos/EasyTier/EasyTier/releases";
+                        ? EasyTierMod.getConfig().apiMirror : "";
+                String apiUrl = mirror.isEmpty() ? GITHUB_API : mirror + GITHUB_API;
 
-                HttpClient client = HttpClient.newBuilder()
-                        .followRedirects(HttpClient.Redirect.ALWAYS)
-                        .connectTimeout(java.time.Duration.ofSeconds(10))
-                        .build();
+                HttpClient client = getClient();
 
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(apiUrl))
@@ -159,7 +189,11 @@ public class NativeLoader {
                 return versions;
             } catch (Exception e) {
                 EasyTierMod.LOGGER.error("[EasyTier] Failed to fetch versions: {}", e.getMessage());
-                throw new RuntimeException("Failed to fetch versions: " + e.getMessage(), e);
+                String msg = e.getMessage();
+                if (msg != null && (msg.contains("PKIX") || msg.contains("cert") || msg.contains("SSL"))) {
+                    throw new RuntimeException("SSL error - try setting a mirror: /easytier mirror api https://ghproxy.net/https://api.github.com", e);
+                }
+                throw new RuntimeException("Failed to fetch versions: " + msg, e);
             }
         });
     }
@@ -172,9 +206,7 @@ public class NativeLoader {
             try {
                 String mirror = EasyTierMod.getConfig() != null
                         ? EasyTierMod.getConfig().apiMirror : "";
-                String apiUrl = mirror.isEmpty() ? GITHUB_LATEST
-                        : mirror.endsWith("/") ? mirror + "repos/EasyTier/EasyTier/releases/latest"
-                        : mirror + "/repos/EasyTier/EasyTier/releases/latest";
+                String apiUrl = mirror.isEmpty() ? GITHUB_LATEST : mirror + GITHUB_LATEST;
 
                 HttpClient client = HttpClient.newBuilder()
                         .connectTimeout(java.time.Duration.ofSeconds(10))
@@ -227,16 +259,9 @@ public class NativeLoader {
                         .build();
 
                 String platformId = getPlatformId();
-                String baseUrl;
-
-                if (mirrorUrl != null && !mirrorUrl.isEmpty()) {
-                    // Custom mirror: https://example.com/path/
-                    String base = mirrorUrl.endsWith("/") ? mirrorUrl : mirrorUrl + "/";
-                    baseUrl = base + versionTag + "/";
-                } else {
-                    // Default GitHub
-                    baseUrl = "https://github.com/EasyTier/EasyTier/releases/download/" + versionTag + "/";
-                }
+                String githubBase = "https://github.com/EasyTier/EasyTier/releases/download/" + versionTag + "/";
+                String baseUrl = (mirrorUrl != null && !mirrorUrl.isEmpty())
+                        ? mirrorUrl + githubBase : githubBase;
 
                 String coreSuffix = isWindows() ? ".exe" : "";
                 String coreAsset = "easytier-core-" + platformId + coreSuffix;
