@@ -122,13 +122,14 @@ public class EasyTierCommands {
         });
     }
 
-    private static void cmd(net.minecraft.commands.CommandSourceStack ctx, String... args) {
+    private static void cmd(com.mojang.brigadier.context.CommandContext<net.minecraft.commands.CommandSourceStack> ctx, String... args) {
         var config = EasyTierMod.getConfig();
-        ctx.getSource().sendSuccess(() -> Component.literal("§6Fetching..."), false);
+        var src = ctx.getSource();
+        src.sendSuccess(() -> Component.literal("§6Fetching..."), false);
         EasyTierCli.executeJson(config, args).thenAccept(json ->
-                ctx.getSource().sendSuccess(() -> Component.literal(formatJson(json)), false)
+                src.sendSuccess(() -> Component.literal(formatJson(json)), false)
         ).exceptionally(e -> {
-            ctx.getSource().sendSuccess(() -> Component.literal("§c" + e.getMessage()), false);
+            src.sendSuccess(() -> Component.literal("§c" + e.getMessage()), false);
             return null;
         });
     }

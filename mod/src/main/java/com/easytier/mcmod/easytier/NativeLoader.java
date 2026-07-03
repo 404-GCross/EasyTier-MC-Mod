@@ -7,6 +7,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * Manages EasyTier native binary location and version detection.
