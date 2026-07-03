@@ -333,7 +333,6 @@ public class EasyTierConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics ctx, int mx, int my, float delta) {
-        this.renderBackground(ctx, mx, my, delta);
         super.render(ctx, mx, my, delta);
         ctx.drawCenteredString(this.font, this.title, this.width / 2, 5, 0xFFFFFF);
 
