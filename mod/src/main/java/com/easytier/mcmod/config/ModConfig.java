@@ -23,6 +23,7 @@ public class ModConfig {
     public String networkName = "easytier-mc";
     public String networkSecret = "";
     public String listenUrl = "tcp://0.0.0.0:11010";
+    public String peers = "";
     public boolean enableEncryption = true;
     public boolean enableIpv6 = true;
 
@@ -119,6 +120,12 @@ public class ModConfig {
             for (String url : listenUrl.split(",")) {
                 args.add("-l");
                 args.add(url.trim());
+            }
+        }
+        if (!peers.isEmpty()) {
+            for (String p : peers.split(",")) {
+                String trimmed = p.trim();
+                if (!trimmed.isEmpty()) { args.add("--peers"); args.add(trimmed); }
             }
         }
         return args.toArray(new String[0]);

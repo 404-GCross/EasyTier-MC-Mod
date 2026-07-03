@@ -2,7 +2,6 @@ package com.easytier.mcmod.screen;
 
 import com.easytier.mcmod.EasyTierMod;
 import com.easytier.mcmod.config.ModConfig;
-import com.easytier.mcmod.easytier.EasyTierCli;
 import com.easytier.mcmod.easytier.NativeLoader;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.GuiGraphics;
@@ -17,9 +16,7 @@ public class EasyTierConfigScreen extends Screen {
     private int page;
     private int scrollY, maxScroll;
 
-    private EditBox hostnameField, networkNameField, networkSecretField, peerUrlField;
-    private String connectorList = "";
-    private long connectorListFetch;
+    private EditBox hostnameField, networkNameField, networkSecretField, peersField;
 
     public EasyTierConfigScreen(Screen parent) {
         super(Component.translatable("easytier.title"));
@@ -87,16 +84,7 @@ public class EasyTierConfigScreen extends Screen {
         hostnameField = addRow("hostname", config.hostname, cx, y); y += 20;
         networkNameField = addRow("networkName", config.networkName, cx, y); y += 20;
         networkSecretField = addRow("networkSecret", config.networkSecret, cx, y); y += 20;
-        peerUrlField = addRow("peerUrl", "", cx, y);
-
-        // Peer buttons inline
-        addRenderableWidget(Button.builder(Component.literal("+"), b -> addConnector())
-                .bounds(cx + 108, y, 18, 14).build());
-        addRenderableWidget(Button.builder(Component.literal(t("easytier.peers")), b -> refreshConnectors())
-                .bounds(cx + 128, y, 36, 14).build());
-        y += 18;
-        addText(cx - 100, y, 0x777777, connectorList);
-        y += 18;
+        peersField = addRow("peerUrl", config.peers, cx, y); y += 20;
 
         // Big Start/Stop button
         addRenderableWidget(Button.builder(
@@ -205,32 +193,19 @@ public class EasyTierConfigScreen extends Screen {
 
     private void toggleProcess() {
         var p = EasyTierMod.getEasyTierProcess();
-        if (p != null && p.isRunning()) EasyTierMod.stopEasyTier();
-        else EasyTierMod.startEasyTier();
-        build();
-    }
-    private void addConnector() {
-        String u = peerUrlField != null ? peerUrlField.getValue().trim() : "";
-        if (u.isEmpty()) return;
-        EasyTierCli.execute(config, "connector", "add", u)
-                .thenAccept(r -> { connectorList = "Added: " + u; build(); })
-                .exceptionally(e -> { connectorList = "Error: " + e.getMessage(); build(); return null; });
-    }
-    private void refreshConnectors() {
-        // Debounce: only refresh once per second
-        long now = System.currentTimeMillis();
-        if (now - connectorListFetch < 1000) return;
-        connectorListFetch = now;
-        connectorList = "...";
-        EasyTierCli.execute(config, "connector", "list").thenAccept(r -> {
-            connectorList = r.trim().isEmpty() ? "(none)" : r.trim().lines().count() + " peers";
+        if (p != null && p.isRunning()) {
+            build(); // immediately show "stopping" state
+            new Thread(() -> { EasyTierMod.stopEasyTier(); build(); }, "ET-stop").start();
+        } else {
+            EasyTierMod.startEasyTier();
             build();
-        }).exceptionally(e -> { connectorList = "Error"; build(); return null; });
+        }
     }
     private void saveConfig() {
         if (hostnameField != null) config.hostname = hostnameField.getValue();
         if (networkNameField != null) config.networkName = networkNameField.getValue();
         if (networkSecretField != null) config.networkSecret = networkSecretField.getValue();
+        if (peersField != null) config.peers = peersField.getValue();
         config.save(FabricLoader.getInstance().getConfigDir());
     }
     private void openFolder() {
