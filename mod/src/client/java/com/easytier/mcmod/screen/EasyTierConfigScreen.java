@@ -138,7 +138,7 @@ public class EasyTierConfigScreen extends Screen {
         y += ROW_HEIGHT + 5;
 
         contentHeight = y + 40;
-        maxScroll = Math.max(0, contentHeight - this.height);
+        maxScroll = Math.max(0, contentHeight - this.height + 60);
     }
 
     // ==== Scrolling ====
@@ -150,17 +150,16 @@ public class EasyTierConfigScreen extends Screen {
     }
 
     private void rebuildWithScroll() {
-        // Remember field values before clearing
         var saved = saveFieldValues();
         clearWidgets();
         buildWidgets();
         restoreFieldValues(saved);
-        // Offset all widgets by scroll amount
-        for (var child : new ArrayList<>(children())) {
-            if (child instanceof AbstractWidget aw) {
+        // Offset ALL renderable/includeable widgets by scroll amount
+        var all = new ArrayList<net.minecraft.client.gui.components.Renderable>();
+        all.addAll(renderables);
+        for (var w : all) {
+            if (w instanceof AbstractWidget aw) {
                 aw.setY(aw.getY() - scrollY);
-            } else if (child instanceof MultiLineTextWidget mw) {
-                mw.setY(mw.getY() - scrollY);
             }
         }
         addFixedButtons();
@@ -336,10 +335,11 @@ public class EasyTierConfigScreen extends Screen {
         super.render(ctx, mx, my, delta);
         ctx.drawCenteredString(this.font, this.title, this.width / 2, 5, 0xFFFFFF);
 
-        // Scroll indicator
+        // Scroll indicator (in the visible area above buttons)
         if (maxScroll > 0) {
-            int barH = (int)((float)this.height / contentHeight * this.height);
-            int barY = (int)((float)scrollY / maxScroll * (this.height - barH));
+            int visH = this.height - 65;
+            int barH = Math.max(15, (int)((float)visH / (contentHeight) * visH));
+            int barY = (int)((float)scrollY / maxScroll * (visH - barH));
             ctx.fill(this.width - 4, barY, this.width - 1, barY + barH, 0x66FFFFFF);
         }
     }
