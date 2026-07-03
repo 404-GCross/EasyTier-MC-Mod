@@ -7,8 +7,8 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
     productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
 
-    // Mixin (needed for client source set in split environment)
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    // Mixin annotation processor for client mixins
+    compileOnly "net.fabricmc:sponge-mixin:0.15.7+mixin.0.10.6"
 
     // ModMenu (optional — only for compile-time)
     modCompileOnly "com.terraformersmc:modmenu:13.0.2"
