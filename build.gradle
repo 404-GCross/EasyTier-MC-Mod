@@ -5,6 +5,13 @@ plugins {
 subprojects {
     apply plugin: 'fabric-loom'
 
+    repositories {
+        maven {
+            name = 'TerraformersMC'
+            url = 'https://maven.terraformersmc.com/'
+        }
+    }
+
     base {
         archivesName = "easytier-mcmod-${project.name}"
     }
