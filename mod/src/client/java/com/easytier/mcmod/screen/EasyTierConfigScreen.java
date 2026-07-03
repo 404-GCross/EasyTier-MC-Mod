@@ -1,8 +1,8 @@
 package com.easytier.mcmod.screen;
 
 import com.easytier.mcmod.EasyTierMod;
-import com.easytier.mcmod.EasyTierModClient;
 import com.easytier.mcmod.config.ModConfig;
+import com.easytier.mcmod.easytier.EasyTierCli;
 import com.easytier.mcmod.easytier.NativeLoader;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.GuiGraphics;
@@ -10,49 +10,35 @@ import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Configuration editing screen for EasyTier mod settings.
- * Accessible from ModMenu or the EasyTier management screen.
+ * Scrollable configuration screen for EasyTier mod settings.
  */
 public class EasyTierConfigScreen extends Screen {
     private final Screen parent;
     private final ModConfig config;
-    private static final int LEFT_COL = 50;
-    private static final int RIGHT_COL = 200;
-    private static final int START_Y = 40;
-    private static final int ROW_HEIGHT = 25;
+    private static final int LEFT_COL = 15;
+    private static final int COL2 = 160;
+    private static final int ROW_HEIGHT = 24;
+    private int contentHeight = 0;
+    private int scrollY = 0;
+    private int maxScroll = 0;
 
-    // Network settings
-    private EditBox networkNameField;
-    private EditBox networkSecretField;
-    private EditBox listenUrlField;
-    private EditBox rpcHostField;
-    private EditBox rpcPortField;
-    private CycleButton<Boolean> autoStartToggle;
-    private CycleButton<Boolean> encryptionToggle;
-    private CycleButton<Boolean> ipv6Toggle;
-    private CycleButton<Boolean> latencyFirstToggle;
-    private CycleButton<Boolean> kcpToggle;
-    private CycleButton<Boolean> quicToggle;
-    private CycleButton<Boolean> disableP2pToggle;
-    private EditBox defaultProtocolField;
-
-    // HUD settings
+    // Network
+    private EditBox networkNameField, networkSecretField, listenUrlField, rpcHostField, rpcPortField, defaultProtocolField;
+    private CycleButton<Boolean> autoStartToggle, encryptionToggle, ipv6Toggle, latencyFirstToggle, kcpToggle, quicToggle, disableP2pToggle;
+    // HUD
     private CycleButton<Boolean> hudEnabledToggle;
-    private CycleButton<String> hudPositionCycle;
-    private CycleButton<String> hudColorCycle;
-
-    // Mirror settings
-    private EditBox apiMirrorField;
-    private EditBox downloadMirrorField;
-
-    // Buttons
-    private Button saveButton;
-    private Button versionsButton;
+    private CycleButton<String> hudPositionCycle, hudColorCycle;
+    // Mirror
+    private EditBox apiMirrorField, downloadMirrorField;
+    // Connector
+    private String connectorListText = "(click List to refresh)";
+    private EditBox connectorUrlField, removeUrlField;
+    // Download
     private EditBox downloadVersionField;
-    private Button downloadButton;
-    private Button startButton;
-    private Button stopButton;
 
     public EasyTierConfigScreen(Screen parent) {
         super(Component.translatable("screen.easytier-mcmod.config"));
@@ -62,253 +48,261 @@ public class EasyTierConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        int y = START_Y;
-        int width = this.width;
+        scrollY = 0;
+        buildWidgets();
+        addFixedButtons();
+    }
 
-        // ---- Section: Network ----
-        addRenderableOnly(new MultiLineTextWidget(
-                LEFT_COL, y, Component.translatable("config.easytier-mcmod.section.network").withColor(0xFFAA00),
-                this.font
-        ));
+    private void buildWidgets() {
+        int y = 15;
+
+        // ==== Network Settings ====
+        y = section(y, "config.easytier-mcmod.section.network");
+        networkNameField = addField(y, "config.easytier-mcmod.network_name", config.networkName, 180); y += ROW_HEIGHT;
+        networkSecretField = addField(y, "config.easytier-mcmod.network_secret", config.networkSecret, 180); y += ROW_HEIGHT;
+        listenUrlField = addField(y, "config.easytier-mcmod.listen_url", config.listenUrl, 280); y += ROW_HEIGHT;
+        rpcHostField = addField(y, "config.easytier-mcmod.rpc_host", config.rpcHost, 120); y += ROW_HEIGHT;
+        rpcPortField = addField(y, "config.easytier-mcmod.rpc_port", String.valueOf(config.rpcPort), 60);
+        rpcPortField.setFilter(s -> s.matches("\\d*")); y += ROW_HEIGHT;
+        defaultProtocolField = addField(y, "config.easytier-mcmod.default_protocol", config.defaultProtocol, 60); y += ROW_HEIGHT;
+
+        // ==== Flags ====
+        y = section(y, "config.easytier-mcmod.section.flags");
+        autoStartToggle = toggle(COL2, y, config.autoStart, "Auto Start"); y += ROW_HEIGHT;
+        encryptionToggle = toggle(COL2, y, config.enableEncryption, "Encryption"); y += ROW_HEIGHT;
+        ipv6Toggle = toggle(COL2, y, config.enableIpv6, "IPv6"); y += ROW_HEIGHT;
+        latencyFirstToggle = toggle(COL2, y, config.latencyFirst, "Latency First"); y += ROW_HEIGHT;
+        kcpToggle = toggle(COL2, y, config.enableKcpProxy, "KCP Proxy"); y += ROW_HEIGHT;
+        quicToggle = toggle(COL2, y, config.enableQuicProxy, "QUIC Proxy"); y += ROW_HEIGHT;
+        disableP2pToggle = toggle(COL2, y, config.disableP2p, "Disable P2P"); y += ROW_HEIGHT;
+
+        // ==== HUD ====
+        y = section(y, "config.easytier-mcmod.section.hud");
+        hudEnabledToggle = toggle(COL2, y, config.hudEnabled, "HUD Enabled"); y += ROW_HEIGHT;
+        hudPositionCycle = cycle(y, "HUD Pos", List.of("top_left","top_right","bottom_left","bottom_right"), config.hudPosition); y += ROW_HEIGHT;
+        hudColorCycle = cycle(y, "HUD Color", List.of("green","white","yellow","red","cyan"), colorToString(config.hudColor)); y += ROW_HEIGHT;
+
+        // ==== Mirror ====
+        y = section(y, "config.easytier-mcmod.section.mirror");
+        apiMirrorField = addField(y, "config.easytier-mcmod.api_mirror", config.apiMirror, 300);
+        apiMirrorField.setHint(Component.literal("api.github.com (default)")); y += ROW_HEIGHT;
+        downloadMirrorField = addField(y, "config.easytier-mcmod.download_mirror", config.downloadMirror, 300);
+        downloadMirrorField.setHint(Component.literal("GitHub Releases (default)")); y += ROW_HEIGHT;
+
+        // ==== Peer Connectors ====
+        y = section(y, "config.easytier-mcmod.section.peers");
+        connectorUrlField = new EditBox(this.font, COL2, y, 200, 20, Component.empty());
+        connectorUrlField.setHint(Component.literal("tcp://peer-ip:11010"));
+        addRenderableWidget(connectorUrlField);
+        addButton(COL2 + 205, y, 35, "Add", () -> addConnector(connectorUrlField.getValue()));
+        addButton(COL2 + 243, y, 35, "List", () -> refreshConnectors());
         y += ROW_HEIGHT;
-
-        // Network Name
-        addLabel(LEFT_COL, y, "config.easytier-mcmod.network_name");
-        networkNameField = addField(RIGHT_COL, y, 200, config.networkName);
-        addRenderableWidget(networkNameField);
+        removeUrlField = new EditBox(this.font, COL2, y, 200, 20, Component.empty());
+        removeUrlField.setHint(Component.literal("URL to remove..."));
+        addRenderableWidget(removeUrlField);
+        addButton(COL2 + 205, y, 35, "Del", () -> removeConnector(removeUrlField.getValue()));
         y += ROW_HEIGHT;
+        addRenderableOnly(new MultiLineTextWidget(COL2, y, Component.literal("§7" + connectorListText), this.font));
+        y += 18;
 
-        // Network Secret
-        addLabel(LEFT_COL, y, "config.easytier-mcmod.network_secret");
-        networkSecretField = addField(RIGHT_COL, y, 200, config.networkSecret);
-        addRenderableWidget(networkSecretField);
-        y += ROW_HEIGHT;
-
-        // Listen URL
-        addLabel(LEFT_COL, y, "config.easytier-mcmod.listen_url");
-        listenUrlField = addField(RIGHT_COL, y, 300, config.listenUrl);
-        addRenderableWidget(listenUrlField);
-        y += ROW_HEIGHT;
-
-        // RPC Host
-        addLabel(LEFT_COL, y, "config.easytier-mcmod.rpc_host");
-        rpcHostField = addField(RIGHT_COL, y, 150, config.rpcHost);
-        addRenderableWidget(rpcHostField);
-        y += ROW_HEIGHT;
-
-        // RPC Port
-        addLabel(LEFT_COL, y, "config.easytier-mcmod.rpc_port");
-        rpcPortField = addField(RIGHT_COL, y, 80, String.valueOf(config.rpcPort));
-        rpcPortField.setFilter(s -> s.matches("\\d*"));
-        addRenderableWidget(rpcPortField);
-        y += ROW_HEIGHT;
-
-        // Default Protocol
-        addLabel(LEFT_COL, y, "config.easytier-mcmod.default_protocol");
-        defaultProtocolField = addField(RIGHT_COL, y, 80, config.defaultProtocol);
-        addRenderableWidget(defaultProtocolField);
-        y += ROW_HEIGHT;
-
-        y += 5; // spacer
-
-        // ---- Section: Flags ----
-        addRenderableOnly(new MultiLineTextWidget(
-                LEFT_COL, y, Component.translatable("config.easytier-mcmod.section.flags").withColor(0xFFAA00),
-                this.font
-        ));
-        y += ROW_HEIGHT;
-
-        // Toggles row 1
-        autoStartToggle = addToggle(LEFT_COL, y, config.autoStart, "config.easytier-mcmod.auto_start");
-        addRenderableWidget(autoStartToggle);
-        encryptionToggle = addToggle(LEFT_COL + 160, y, config.enableEncryption, "config.easytier-mcmod.enable_encryption");
-        addRenderableWidget(encryptionToggle);
-        y += ROW_HEIGHT;
-
-        // Toggles row 2
-        ipv6Toggle = addToggle(LEFT_COL, y, config.enableIpv6, "config.easytier-mcmod.enable_ipv6");
-        addRenderableWidget(ipv6Toggle);
-        latencyFirstToggle = addToggle(LEFT_COL + 160, y, config.latencyFirst, "config.easytier-mcmod.latency_first");
-        addRenderableWidget(latencyFirstToggle);
-        y += ROW_HEIGHT;
-
-        // Toggles row 3
-        kcpToggle = addToggle(LEFT_COL, y, config.enableKcpProxy, "config.easytier-mcmod.enable_kcp");
-        addRenderableWidget(kcpToggle);
-        quicToggle = addToggle(LEFT_COL + 160, y, config.enableQuicProxy, "config.easytier-mcmod.enable_quic");
-        addRenderableWidget(quicToggle);
-        y += ROW_HEIGHT;
-
-        // Toggles row 4
-        disableP2pToggle = addToggle(LEFT_COL, y, config.disableP2p, "config.easytier-mcmod.disable_p2p");
-        addRenderableWidget(disableP2pToggle);
-        y += ROW_HEIGHT;
-
-        y += 5; // spacer
-
-        // ---- Section: HUD ----
-        addRenderableOnly(new MultiLineTextWidget(
-                LEFT_COL, y, Component.translatable("config.easytier-mcmod.section.hud").withColor(0xFFAA00),
-                this.font
-        ));
-        y += ROW_HEIGHT;
-
-        hudEnabledToggle = addToggle(LEFT_COL, y, config.hudEnabled, "config.easytier-mcmod.hud_enabled");
-        addRenderableWidget(hudEnabledToggle);
-        y += ROW_HEIGHT;
-
-        addLabel(LEFT_COL, y, "config.easytier-mcmod.hud_position");
-        hudPositionCycle = CycleButton.<String>builder(value -> {
-            return switch (value) {
-                case "top_left" -> Component.translatable("config.easytier-mcmod.hud_position.top_left");
-                case "bottom_left" -> Component.translatable("config.easytier-mcmod.hud_position.bottom_left");
-                case "bottom_right" -> Component.translatable("config.easytier-mcmod.hud_position.bottom_right");
-                default -> Component.translatable("config.easytier-mcmod.hud_position.top_right");
-            };
-        }).withValues("top_left", "top_right", "bottom_left", "bottom_right")
-                .withInitialValue(config.hudPosition)
-                .create(RIGHT_COL, y, 150, 20,
-                        Component.translatable("config.easytier-mcmod.hud_position"),
-                        (btn, val) -> {});
-        addRenderableWidget(hudPositionCycle);
-        y += ROW_HEIGHT;
-
-        addLabel(LEFT_COL, y, "config.easytier-mcmod.hud_color");
-        hudColorCycle = CycleButton.<String>builder(value -> {
-            return switch (value) {
-                case "white" -> Component.translatable("config.easytier-mcmod.hud_color.white");
-                case "yellow" -> Component.translatable("config.easytier-mcmod.hud_color.yellow");
-                case "red" -> Component.translatable("config.easytier-mcmod.hud_color.red");
-                case "cyan" -> Component.translatable("config.easytier-mcmod.hud_color.cyan");
-                default -> Component.translatable("config.easytier-mcmod.hud_color.green");
-            };
-        }).withValues("green", "white", "yellow", "red", "cyan")
-                .withInitialValue(colorToString(config.hudColor))
-                .create(RIGHT_COL, y, 150, 20,
-                        Component.translatable("config.easytier-mcmod.hud_color"),
-                        (btn, val) -> {});
-        addRenderableWidget(hudColorCycle);
-        y += ROW_HEIGHT;
-
-        y += 10;
-
-        // ---- Section: Mirror ----
-        addRenderableOnly(new MultiLineTextWidget(
-                LEFT_COL, y, Component.translatable("config.easytier-mcmod.section.mirror").withColor(0xFFAA00),
-                this.font
-        ));
-        y += ROW_HEIGHT;
-
-        addLabel(LEFT_COL, y, "config.easytier-mcmod.api_mirror");
-        apiMirrorField = addField(RIGHT_COL, y, 320, config.apiMirror);
-        apiMirrorField.setHint(Component.literal("https://api.github.com (default)"));
-        addRenderableWidget(apiMirrorField);
-        y += ROW_HEIGHT;
-
-        addLabel(LEFT_COL, y, "config.easytier-mcmod.download_mirror");
-        downloadMirrorField = addField(RIGHT_COL, y, 320, config.downloadMirror);
-        downloadMirrorField.setHint(Component.literal("GitHub Releases (default)"));
-        addRenderableWidget(downloadMirrorField);
-        y += ROW_HEIGHT + 5;
-
-        // ---- Section: Download ----
-        addRenderableOnly(new MultiLineTextWidget(
-                LEFT_COL, y, Component.translatable("config.easytier-mcmod.section.download").withColor(0xFFAA00),
-                this.font
-        ));
-        y += ROW_HEIGHT;
-
-        // Version: [________] [Versions] [Download]
-        versionsButton = Button.builder(
-                Component.literal("Versions"),
-                btn -> fetchVersions()
-        ).bounds(LEFT_COL, y, 80, 20).build();
-        addRenderableWidget(versionsButton);
-
-        downloadVersionField = new EditBox(this.font, LEFT_COL + 85, y, 160, 20,
-                Component.literal(""));
+        // ==== Download ====
+        y = section(y, "config.easytier-mcmod.section.download");
+        downloadVersionField = new EditBox(this.font, COL2, y, 140, 20, Component.empty());
         downloadVersionField.setHint(Component.literal("e.g. v2.6.4"));
         addRenderableWidget(downloadVersionField);
-
-        downloadButton = Button.builder(
-                Component.literal("Download"),
-                btn -> downloadVersion()
-        ).bounds(LEFT_COL + 250, y, 80, 20).build();
-        addRenderableWidget(downloadButton);
+        addButton(COL2 + 145, y, 55, "Versions", () -> fetchVersions());
+        addButton(COL2 + 205, y, 60, "Download", () -> downloadVersion());
+        y += ROW_HEIGHT;
+        addRenderableOnly(new MultiLineTextWidget(COL2, y,
+                Component.literal("§7Current: " + NativeLoader.getCurrentVersion()), this.font));
         y += ROW_HEIGHT;
 
-        addRenderableOnly(new MultiLineTextWidget(LEFT_COL, y,
-                Component.literal("§7Current: " + NativeLoader.getCurrentVersion()), this.font));
-        y += ROW_HEIGHT + 5;
-
-        // ---- Section: Process ----
-        int btnWidth = 120;
-        int btnSpacing = 5;
-
-        startButton = Button.builder(
-                Component.translatable("config.easytier-mcmod.start"),
-                btn -> startEasyTier()
-        ).bounds(LEFT_COL, y, btnWidth, 20).build();
-        addRenderableWidget(startButton);
-
-        stopButton = Button.builder(
-                Component.translatable("config.easytier-mcmod.stop"),
-                btn -> stopEasyTier()
-        ).bounds(LEFT_COL + btnWidth + btnSpacing, y, btnWidth, 20).build();
-        addRenderableWidget(stopButton);
-        y += ROW_HEIGHT + 10;
-
-        // Save button (bottom)
-        saveButton = Button.builder(
-                Component.translatable("config.easytier-mcmod.save"),
-                btn -> saveConfig()
-        ).bounds(this.width / 2 - 100, this.height - 30, 200, 20).build();
-        addRenderableWidget(saveButton);
-
-        // Done button
-        addRenderableWidget(Button.builder(
-                Component.translatable("gui.done"),
-                btn -> onClose()
-        ).bounds(this.width / 2 - 100, this.height - 55, 200, 20).build());
-
-        updateButtonStates();
-    }
-
-    private void addLabel(int x, int y, String translationKey) {
-        addRenderableOnly(new MultiLineTextWidget(x, y,
-                Component.translatable(translationKey), this.font));
-    }
-
-    private EditBox addField(int x, int y, int width, String initial) {
-        EditBox field = new EditBox(this.font, x, y, width, 20,
-                Component.empty());
-        field.setValue(initial);
-        field.setMaxLength(256);
-        return field;
-    }
-
-    private CycleButton<Boolean> addToggle(int x, int y, boolean initial, String key) {
-        return CycleButton.onOffBuilder(initial)
-                .create(x, y, 150, 20, Component.translatable(key), (btn, val) -> {});
-    }
-
-    private void updateButtonStates() {
+        // ==== Process ====
+        y = section(y, null);
         var proc = EasyTierMod.getEasyTierProcess();
         boolean running = proc != null && proc.isRunning();
-        if (startButton != null) startButton.active = !running;
-        if (stopButton != null) stopButton.active = running;
+        addButton(COL2, y, 80, running ? "§aRunning" : "Start", () -> {
+            if (running) return;
+            EasyTierMod.startEasyTier();
+            this.minecraft.setScreen(new EasyTierConfigScreen(parent));
+        });
+        addButton(COL2 + 85, y, 60, "Stop", () -> { EasyTierMod.stopEasyTier();
+            this.minecraft.setScreen(new EasyTierConfigScreen(parent)); });
+        addButton(COL2 + 150, y, 80, "Restart", () -> {
+            var p = EasyTierMod.getEasyTierProcess();
+            if (p != null) p.restart();
+            else EasyTierMod.startEasyTier();
+            this.minecraft.setScreen(new EasyTierConfigScreen(parent));
+        });
+        y += ROW_HEIGHT + 5;
+
+        contentHeight = y + 40;
+        maxScroll = Math.max(0, contentHeight - this.height);
     }
 
+    // ==== Scrolling ====
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        scrollY = (int) Math.clamp(scrollY - verticalAmount * 20, 0, maxScroll);
+        rebuildWithScroll();
+        return true;
+    }
+
+    private void rebuildWithScroll() {
+        // Remember field values before clearing
+        var saved = saveFieldValues();
+        clearWidgets();
+        buildWidgets();
+        restoreFieldValues(saved);
+        // Offset all widgets by scroll amount
+        for (var child : new ArrayList<>(children())) {
+            if (child instanceof AbstractWidget aw) {
+                aw.setY(aw.getY() - scrollY);
+            } else if (child instanceof MultiLineTextWidget mw) {
+                mw.setY(mw.getY() - scrollY);
+            }
+        }
+        addFixedButtons();
+    }
+
+    private java.util.Map<String, String> saveFieldValues() {
+        var m = new java.util.HashMap<String, String>();
+        if (networkNameField != null) m.put("nn", networkNameField.getValue());
+        if (networkSecretField != null) m.put("ns", networkSecretField.getValue());
+        if (listenUrlField != null) m.put("lu", listenUrlField.getValue());
+        if (rpcHostField != null) m.put("rh", rpcHostField.getValue());
+        if (rpcPortField != null) m.put("rp", rpcPortField.getValue());
+        if (defaultProtocolField != null) m.put("dp", defaultProtocolField.getValue());
+        if (apiMirrorField != null) m.put("am", apiMirrorField.getValue());
+        if (downloadMirrorField != null) m.put("dm", downloadMirrorField.getValue());
+        if (downloadVersionField != null) m.put("dv", downloadVersionField.getValue());
+        if (connectorUrlField != null) m.put("cu", connectorUrlField.getValue());
+        if (removeUrlField != null) m.put("ru", removeUrlField.getValue());
+        return m;
+    }
+
+    private void restoreFieldValues(java.util.Map<String, String> m) {
+        if (networkNameField != null && m.containsKey("nn")) networkNameField.setValue(m.get("nn"));
+        if (networkSecretField != null && m.containsKey("ns")) networkSecretField.setValue(m.get("ns"));
+        if (listenUrlField != null && m.containsKey("lu")) listenUrlField.setValue(m.get("lu"));
+        if (rpcHostField != null && m.containsKey("rh")) rpcHostField.setValue(m.get("rh"));
+        if (rpcPortField != null && m.containsKey("rp")) rpcPortField.setValue(m.get("rp"));
+        if (defaultProtocolField != null && m.containsKey("dp")) defaultProtocolField.setValue(m.get("dp"));
+        if (apiMirrorField != null && m.containsKey("am")) apiMirrorField.setValue(m.get("am"));
+        if (downloadMirrorField != null && m.containsKey("dm")) downloadMirrorField.setValue(m.get("dm"));
+        if (downloadVersionField != null && m.containsKey("dv")) downloadVersionField.setValue(m.get("dv"));
+        if (connectorUrlField != null && m.containsKey("cu")) connectorUrlField.setValue(m.get("cu"));
+        if (removeUrlField != null && m.containsKey("ru")) removeUrlField.setValue(m.get("ru"));
+    }
+
+    private void addFixedButtons() {
+        addRenderableWidget(Button.builder(Component.translatable("config.easytier-mcmod.save"),
+                btn -> saveConfig()).bounds(this.width / 2 - 105, this.height - 28, 100, 20).build());
+        addRenderableWidget(Button.builder(Component.translatable("gui.done"),
+                btn -> onClose()).bounds(this.width / 2 + 5, this.height - 28, 100, 20).build());
+    }
+
+    // ==== Widget helpers ====
+    private int section(int y, String key) {
+        if (key != null) {
+            addRenderableOnly(new MultiLineTextWidget(LEFT_COL, y,
+                    Component.translatable(key).withColor(0xFFAA00), this.font));
+        }
+        return y + ROW_HEIGHT;
+    }
+
+    private EditBox addField(int y, String key, String value, int w) {
+        addRenderableOnly(new MultiLineTextWidget(LEFT_COL, y, Component.translatable(key), this.font));
+        EditBox f = new EditBox(this.font, COL2, y, w, 20, Component.empty());
+        f.setValue(value != null ? value : ""); f.setMaxLength(256);
+        addRenderableWidget(f);
+        return f;
+    }
+
+    private CycleButton<Boolean> toggle(int x, int y, boolean init, String label) {
+        var btn = CycleButton.onOffBuilder(init).create(x, y, 130, 20, Component.literal(label), (b, v) -> {});
+        addRenderableWidget(btn);
+        return btn;
+    }
+
+    private CycleButton<String> cycle(int y, String label, List<String> values, String init) {
+        var btn = CycleButton.<String>builder(v -> Component.literal(v))
+                .withValues(values).withInitialValue(init)
+                .create(COL2, y, 140, 20, Component.literal(label), (b, v) -> {});
+        addRenderableWidget(btn);
+        return btn;
+    }
+
+    private void addButton(int x, int y, int w, String label, Runnable action) {
+        addRenderableWidget(Button.builder(Component.literal(label), btn -> action.run())
+                .bounds(x, y, w, 20).build());
+    }
+
+    // ==== Connector management ====
+    private void refreshConnectors() {
+        connectorListText = "Fetching...";
+        EasyTierCli.execute(EasyTierMod.getConfig(), "connector", "list").thenAccept(result -> {
+            if (result.contains("connector")) {
+                connectorListText = result.trim().lines().count() + " connectors. Use List to refresh.";
+            } else {
+                connectorListText = result.trim();
+            }
+        }).exceptionally(e -> { connectorListText = "Error: " + e.getMessage(); return null; });
+    }
+
+    private void addConnector(String url) {
+        if (url.isBlank()) { sendMsg("§cEnter a URL like tcp://1.2.3.4:11010"); return; }
+        sendMsg("§6Adding: " + url);
+        EasyTierCli.execute(EasyTierMod.getConfig(), "connector", "add", url)
+                .thenAccept(r -> { sendMsg("§aAdded!"); refreshConnectors(); })
+                .exceptionally(e -> { sendMsg("§cFailed: " + e.getMessage()); return null; });
+    }
+
+    private void removeConnector(String url) {
+        if (url.isBlank()) { sendMsg("§cEnter the URL to remove"); return; }
+        EasyTierCli.execute(EasyTierMod.getConfig(), "connector", "remove", url)
+                .thenAccept(r -> { sendMsg("§aRemoved!"); refreshConnectors(); })
+                .exceptionally(e -> { sendMsg("§cFailed: " + e.getMessage()); return null; });
+    }
+
+    // ==== Download ====
+    private void fetchVersions() {
+        sendMsg("§6Fetching versions...");
+        NativeLoader.fetchAvailableVersions().thenAccept(versions -> {
+            if (versions.isEmpty()) { sendMsg("§cNo versions found."); return; }
+            downloadVersionField.setValue(versions.get(0).tag);
+            var sb = new StringBuilder("§6Versions: ");
+            for (int i = 0; i < Math.min(5, versions.size()); i++) {
+                if (i > 0) sb.append("§7, ");
+                sb.append("§e").append(versions.get(i).tag);
+            }
+            sendMsg(sb.toString());
+        }).exceptionally(e -> { sendMsg("§c" + e.getMessage()); return null; });
+    }
+
+    private void downloadVersion() {
+        String v = downloadVersionField.getValue();
+        if (v.isEmpty()) { sendMsg("§cEnter a version first"); return; }
+        sendMsg("§6Downloading " + v + "...");
+        NativeLoader.downloadUpdate(v, this::sendMsg).thenAccept(ok -> {
+            if (ok) sendMsg("§aDone! Start EasyTier to use.");
+        });
+    }
+
+    private void sendMsg(String msg) {
+        if (this.minecraft != null && this.minecraft.player != null) {
+            this.minecraft.player.displayClientMessage(Component.literal(msg), false);
+        }
+    }
+
+    // ==== Save ====
     private void saveConfig() {
         config.networkName = networkNameField.getValue();
         config.networkSecret = networkSecretField.getValue();
         config.listenUrl = listenUrlField.getValue();
         config.rpcHost = rpcHostField.getValue();
-        try {
-            config.rpcPort = Integer.parseInt(rpcPortField.getValue());
-        } catch (NumberFormatException ignored) {}
+        try { config.rpcPort = Integer.parseInt(rpcPortField.getValue()); } catch (NumberFormatException ignored) {}
         config.defaultProtocol = defaultProtocolField.getValue();
-
         config.autoStart = autoStartToggle.getValue();
         config.enableEncryption = encryptionToggle.getValue();
         config.enableIpv6 = ipv6Toggle.getValue();
@@ -316,116 +310,41 @@ public class EasyTierConfigScreen extends Screen {
         config.enableKcpProxy = kcpToggle.getValue();
         config.enableQuicProxy = quicToggle.getValue();
         config.disableP2p = disableP2pToggle.getValue();
-
         config.apiMirror = apiMirrorField.getValue();
         config.downloadMirror = downloadMirrorField.getValue();
-
         config.hudEnabled = hudEnabledToggle.getValue();
         config.hudPosition = hudPositionCycle.getValue();
-        config.hudColor = stringToColor(hudColorCycle.getValue());
-
+        config.hudColor = stringToInt(hudColorCycle.getValue());
         config.save(FabricLoader.getInstance().getConfigDir());
-
-        if (this.minecraft != null && this.minecraft.player != null) {
-            this.minecraft.player.displayClientMessage(
-                    Component.translatable("message.easytier-mcmod.config_saved"), false);
-        }
-    }
-
-    private void fetchVersions() {
-        sendMessage("§6Fetching versions...");
-        NativeLoader.fetchAvailableVersions().thenAccept(versions -> {
-            if (versions.isEmpty()) {
-                sendMessage("§cNo versions found. Check mirror settings.");
-                return;
-            }
-            // Show top 5 in chat, fill version field with latest
-            if (!versions.isEmpty() && downloadVersionField != null) {
-                downloadVersionField.setValue(versions.get(0).tag);
-            }
-            StringBuilder sb = new StringBuilder("§6Versions: ");
-            for (int i = 0; i < Math.min(5, versions.size()); i++) {
-                if (i > 0) sb.append("§7, ");
-                sb.append("§e").append(versions.get(i).tag);
-            }
-            sendMessage(sb.toString());
-        }).exceptionally(e -> {
-            sendMessage("§cFailed: " + e.getMessage());
-            return null;
-        });
-    }
-
-    private void downloadVersion() {
-        String version = downloadVersionField.getValue();
-        if (version.isEmpty()) {
-            sendMessage("§cEnter a version tag (e.g. v2.6.4) or click 'Versions' to list");
-            return;
-        }
-        sendMessage("§6Downloading " + version + "...");
-        NativeLoader.downloadUpdate(version, msg -> {
-            sendMessage("§e" + msg);
-        }).thenAccept(success -> {
-            if (success) {
-                sendMessage("§aDownload complete! You can now start EasyTier.");
-            } else {
-                sendMessage("§cDownload failed. Check mirror or try another version.");
-            }
-        });
-    }
-
-    private void startEasyTier() {
-        EasyTierMod.startEasyTier();
-        updateButtonStates();
-        sendMessage("§aStarting EasyTier...");
-    }
-
-    private void stopEasyTier() {
-        EasyTierMod.stopEasyTier();
-        updateButtonStates();
-        sendMessage("§aStopping EasyTier...");
-    }
-
-    private void sendMessage(String msg) {
-        if (this.minecraft != null && this.minecraft.player != null) {
-            this.minecraft.player.displayClientMessage(Component.literal(msg), false);
-        }
+        sendMsg("§aConfig saved!");
     }
 
     @Override
     public void onClose() {
-        if (this.minecraft != null) {
-            this.minecraft.setScreen(parent);
-        }
+        if (this.minecraft != null) this.minecraft.setScreen(parent);
     }
 
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
-        context.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+    public boolean isPauseScreen() { return false; }
 
-        // Version info
-        String version = "EasyTier: " + NativeLoader.getCurrentVersion();
-        context.drawString(this.font, version, this.width - this.font.width(version) - 10,
-                this.height - 12, 0x888888);
+    @Override
+    public void render(GuiGraphics ctx, int mx, int my, float delta) {
+        this.renderBackground(ctx, mx, my, delta);
+        super.render(ctx, mx, my, delta);
+        ctx.drawCenteredString(this.font, this.title, this.width / 2, 5, 0xFFFFFF);
+
+        // Scroll indicator
+        if (maxScroll > 0) {
+            int barH = (int)((float)this.height / contentHeight * this.height);
+            int barY = (int)((float)scrollY / maxScroll * (this.height - barH));
+            ctx.fill(this.width - 4, barY, this.width - 1, barY + barH, 0x66FFFFFF);
+        }
     }
 
-    private static String colorToString(int color) {
-        return switch (color) {
-            case 0xFFFFFF -> "white";
-            case 0xFFFF00 -> "yellow";
-            case 0xFF0000 -> "red";
-            case 0x00FFFF -> "cyan";
-            default -> "green";
-        };
+    private static String colorToString(int c) {
+        return switch (c) { case 0xFFFFFF -> "white"; case 0xFFFF00 -> "yellow"; case 0xFF0000 -> "red"; case 0x00FFFF -> "cyan"; default -> "green"; };
     }
-
-    private static int stringToColor(String str) {
-        return switch (str) {
-            case "white" -> 0xFFFFFF;
-            case "yellow" -> 0xFFFF00;
-            case "red" -> 0xFF0000;
-            case "cyan" -> 0x00FFFF;
-            default -> 0x00FF00;
-        };
+    private static int stringToInt(String s) {
+        return switch (s) { case "white" -> 0xFFFFFF; case "yellow" -> 0xFFFF00; case "red" -> 0xFF0000; case "cyan" -> 0x00FFFF; default -> 0x00FF00; };
     }
 }
