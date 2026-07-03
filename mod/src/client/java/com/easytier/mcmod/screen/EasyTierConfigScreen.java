@@ -123,7 +123,11 @@ public class EasyTierConfigScreen extends Screen {
         addText(cx - 100, y, "§7Platform: " + NativeLoader.getPlatformId()); y += 16;
         addText(cx - 100, y, "§7Place binaries in:"); y += 14;
         addText(cx - 100, y, "§7  .minecraft/easytier/bin/"); y += 14;
-        addText(cx - 100, y, "§7  easytier-core + easytier-cli");
+        addText(cx - 100, y, "§7  easytier-core + easytier-cli"); y += 14;
+        addBtn(cx - 40, y, 80, "Open Folder", () -> {
+            try { java.awt.Desktop.getDesktop().open(NativeLoader.getBinDir().toFile()); }
+            catch (Exception ex) { EasyTierMod.LOGGER.error("[EasyTier] Cannot open folder: {}", ex.getMessage()); }
+        });
     }
 
     // ---- Widget shortcuts ----
