@@ -243,15 +243,15 @@ public class NativeLoader {
                 String cliAsset = "easytier-cli-" + platformId + coreSuffix;
 
                 // Download easytier-core
-                progressCallback.accept("Downloading easytier-core " + versionTag + "...");
                 Path coreTemp = binDir.resolve(BINARY_NAME + ".new");
-                downloadFile(client, baseUrl + coreAsset, coreTemp);
+                downloadFileWithProgress(client, baseUrl + coreAsset, coreTemp,
+                        "easytier-core", progressCallback);
                 makeExecutable(coreTemp);
 
                 // Download easytier-cli
-                progressCallback.accept("Downloading easytier-cli " + versionTag + "...");
                 Path cliTemp = binDir.resolve(CLI_NAME + ".new");
-                downloadFile(client, baseUrl + cliAsset, cliTemp);
+                downloadFileWithProgress(client, baseUrl + cliAsset, cliTemp,
+                        "easytier-cli", progressCallback);
                 makeExecutable(cliTemp);
 
                 // Atomic replacement
@@ -266,18 +266,19 @@ public class NativeLoader {
                 Files.writeString(binDir.resolve(VERSION_FILE), versionTag);
                 currentVersion = versionTag;
 
-                progressCallback.accept("Update to " + versionTag + " complete! Restart EasyTier to apply.");
+                progressCallback.accept("Done! Restart EasyTier to apply.");
                 EasyTierMod.LOGGER.info("[EasyTier] Updated to version {}", versionTag);
                 return true;
             } catch (IOException | InterruptedException e) {
                 EasyTierMod.LOGGER.error("[EasyTier] Update failed: {}", e.getMessage());
-                progressCallback.accept("Update failed: " + e.getMessage());
+                progressCallback.accept("Failed: " + e.getMessage());
                 return false;
             }
         });
     }
 
-    private static void downloadFile(HttpClient client, String url, Path dest)
+    private static void downloadFileWithProgress(HttpClient client, String url, Path dest,
+                                                  String name, Consumer<String> cb)
             throws IOException, InterruptedException {
         EasyTierMod.LOGGER.debug("[EasyTier] Downloading: {}", url);
         HttpRequest request = HttpRequest.newBuilder()
@@ -291,9 +292,50 @@ public class NativeLoader {
             throw new IOException("Download failed (HTTP " + response.statusCode() + "): " + url);
         }
 
-        try (InputStream in = response.body()) {
-            Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+        long total = response.headers().firstValueAsLong("Content-Length").orElse(-1);
+        long startTime = System.currentTimeMillis();
+        long lastReport = startTime;
+        long downloaded = 0;
+        long lastDownloaded = 0;
+
+        try (InputStream in = response.body();
+             OutputStream out = Files.newOutputStream(dest)) {
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) != -1) {
+                out.write(buf, 0, n);
+                downloaded += n;
+                long now = System.currentTimeMillis();
+                // Report every 500ms
+                if (now - lastReport > 500) {
+                    long elapsed = now - startTime;
+                    double speed = downloaded / (elapsed / 1000.0); // bytes/sec
+                    String pct = total > 0 ? String.format("%.0f%%", downloaded * 100.0 / total) : "?%";
+                    String spd = formatSpeed(speed);
+                    String size = total > 0 ? formatSize(total) : "?";
+                    cb.accept(name + ": " + pct + " " + spd + " (" + formatSize(downloaded) + "/" + size + ")");
+                    lastReport = now;
+                    lastDownloaded = downloaded;
+                }
+            }
+            // Final report
+            long elapsed = System.currentTimeMillis() - startTime;
+            double speed = downloaded / (elapsed / 1000.0);
+            cb.accept(name + ": 100% " + formatSpeed(speed) + " (" + formatSize(downloaded) + ") done");
         }
+    }
+
+    private static String formatSpeed(double bytesPerSec) {
+        if (bytesPerSec >= 1_000_000) return String.format("%.1f MB/s", bytesPerSec / 1_000_000);
+        if (bytesPerSec >= 1_000) return String.format("%.0f KB/s", bytesPerSec / 1_000);
+        return String.format("%.0f B/s", bytesPerSec);
+    }
+
+    private static String formatSize(long bytes) {
+        if (bytes >= 1_000_000_000) return String.format("%.1f GB", bytes / 1_000_000_000.0);
+        if (bytes >= 1_000_000) return String.format("%.1f MB", bytes / 1_000_000.0);
+        if (bytes >= 1_000) return String.format("%.0f KB", bytes / 1_000.0);
+        return bytes + " B";
     }
 
     /**
