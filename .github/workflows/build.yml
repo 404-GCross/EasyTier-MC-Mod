@@ -25,24 +25,8 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Pre-download Minecraft jar from Mojang
-        run: |
-          VERSION="1.21.8"
-          MANIFEST=$(curl -s "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
-          VERSION_URL=$(echo "$MANIFEST" | python3 -c "import sys,json; data=json.load(sys.stdin); [print(v['url']) for v in data['versions'] if v['id']=='$VERSION']")
-          echo "Version URL: $VERSION_URL"
-          VERSION_JSON=$(curl -s "$VERSION_URL")
-          CLIENT_URL=$(echo "$VERSION_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['downloads']['client']['url'])")
-          CLIENT_HASH=$(echo "$VERSION_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['downloads']['client']['sha1'])")
-          echo "Client URL: $CLIENT_URL"
-          # Place in loom cache
-          LOOM_DIR="$HOME/.gradle/caches/fabric-loom/${VERSION}"
-          mkdir -p "$LOOM_DIR"
-          curl -sL -o "$LOOM_DIR/minecraft-${VERSION}-client.jar" "$CLIENT_URL"
-          echo "Downloaded client jar ($(stat -c%s "$LOOM_DIR/minecraft-${VERSION}-client.jar") bytes)"
-
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon --stacktrace
+        run: ./gradlew build --no-daemon
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
