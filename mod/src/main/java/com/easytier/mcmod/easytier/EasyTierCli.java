@@ -76,7 +76,14 @@ public class EasyTierCli {
                 return output.toString().trim();
             } catch (Exception e) {
                 EasyTierMod.LOGGER.error("[EasyTier] CLI error: {}", e.getMessage());
-                throw new RuntimeException("EasyTier CLI error: " + e.getMessage(), e);
+                String msg = e.getMessage();
+                if (msg != null && msg.contains("timed out")) {
+                    throw new RuntimeException("CLI timed out. Is EasyTier running?", e);
+                }
+                if (msg != null && (msg.contains("exit") || msg.contains("failed"))) {
+                    throw new RuntimeException("EasyTier not running or wrong RPC port. Start EasyTier first.", e);
+                }
+                throw new RuntimeException("CLI error: " + (msg != null ? msg : "unknown"), e);
             }
         });
     }
