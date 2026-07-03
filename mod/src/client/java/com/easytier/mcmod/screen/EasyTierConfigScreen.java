@@ -11,276 +11,217 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
- * EasyTier configuration screen — simple main page + advanced settings dialog.
- * Design follows EasytierGame: minimal first-level, advanced hidden behind button.
+ * EasyTier config screen — simple main page, advanced on second level.
  */
 public class EasyTierConfigScreen extends Screen {
     private final Screen parent;
     private final ModConfig config;
-
-    private EditBox hostnameField, networkNameField, networkSecretField, peerUrlField;
-    private String connectorList = "";
-    private String statusText = "";
-    private Button startStopBtn;
     private boolean showingAdvanced;
 
+    // Main page fields
+    private EditBox hostnameField, networkNameField, networkSecretField, peerUrlField;
+    private String connectorList = "(none)";
+    private String statusMsg = "";
+
+    // Core page fields
+    private EditBox versionField;
+    private String dlStatus = "";
+
     public EasyTierConfigScreen(Screen parent) {
-        super(Component.literal("EasyTier"));
+        super(Component.translatable("easytier.title"));
         this.parent = parent;
         this.config = EasyTierMod.getConfig();
     }
 
     @Override
-    protected void init() {
-        showingAdvanced = false;
-        buildMain();
-    }
+    protected void init() { showingAdvanced = false; buildMain(); }
 
-    // ============== MAIN PAGE ==============
+    // ============ MAIN ============
     private void buildMain() {
         clearWidgets();
         int cx = this.width / 2;
-        int y = 30;
+        int y = 28;
 
-        // Title
-        addRenderableWidget(new MultiLineTextWidget(cx - 80, y,
-                Component.literal("EasyTier").withColor(0x00AAFF), this.font));
-        y += 28;
-
-        // ---- Version / Status ----
-        String ver = NativeLoader.getCurrentVersion();
+        // Status
         var proc = EasyTierMod.getEasyTierProcess();
         boolean running = proc != null && proc.isRunning();
-        statusText = running ? "status_running" : ver.equals("not installed") ? "status_no_bin" : "status_stopped";
+        String ver = NativeLoader.getCurrentVersion();
+        if (!NativeLoader.isInstalled()) statusMsg = t("easytier.status.not_installed");
+        else if (running) statusMsg = "§a" + t("easytier.status.running") + " §7(v" + ver + ")";
+        else statusMsg = "§7" + t("easytier.status.stopped") + " (v" + ver + ")";
+
         addRenderableWidget(new MultiLineTextWidget(cx - 100, y,
-                Component.literal(statusText), this.font));
+                Component.literal(statusMsg), this.font));
+        y += 20;
+
+        // Fields
+        hostnameField = field(cx, y, 180, "easytier.hostname", "easytier.hostname.hint", config.hostname); y += 22;
+        networkNameField = field(cx, y, 180, "easytier.network_name", "easytier.network_name.hint", config.networkName); y += 22;
+        networkSecretField = field(cx, y, 180, "easytier.network_secret", "easytier.network_secret.hint", config.networkSecret); y += 22;
+
+        // Peer URL + Add/List
+        peerUrlField = field(cx, y, 240, "easytier.peer_url", "easytier.peer_url.hint", ""); y += 1;
+        btn(cx + 125, y, 20, "+", () -> addConnector());
+        btn(cx + 148, y, 40, t("easytier.peers"), () -> refreshConnectors());
+        y += 20;
+        addRenderableWidget(new MultiLineTextWidget(cx - 120, y,
+                Component.literal("§7" + connectorList), this.font));
         y += 18;
 
-        // ---- Hostname ----
-        addField(cx, y, 200, "hostname", "e.g. Player1", config.hostname,
-                f -> hostnameField = f);
-        y += 22;
+        // Bottom bar
+        int botY = this.height - 28;
 
-        // ---- Network Name ----
-        addField(cx, y, 200, "networkName", "Room Name", config.networkName,
-                f -> networkNameField = f);
-        y += 22;
-
-        // ---- Network Secret ----
-        addField(cx, y, 200, "networkSecret", "Room Password (optional)", config.networkSecret,
-                f -> networkSecretField = f);
-        y += 22;
-
-        // ---- Peer URL ----
-        addField(cx, y, 300, "peerUrl", "Server: tcp://host:port", "",
-                f -> peerUrlField = f);
-        y += 4;
-        // Add / List connector buttons
-        addButton(cx + 155, y, 30, "+", () -> addConnector());
-        addButton(cx + 188, y, 40, "List", () -> refreshConnectors());
-        y += 22;
-
-        // Connector list text
-        addRenderableWidget(new MultiLineTextWidget(cx - 150, y,
-                Component.literal("§7" + connectorList), this.font));
-        y += 16;
-
-        y += 8;
-
-        // ---- Start/Stop Button ----
-        startStopBtn = Button.builder(
-                Component.literal(running ? "§cStop" : "§aStart"),
+        // Start/Stop button
+        addRenderableWidget(Button.builder(
+                Component.literal(running ? "§c" + t("easytier.stop") : "§a" + t("easytier.start")),
                 btn -> toggleProcess()
-        ).bounds(cx - 60, y, 120, 24).build();
-        addRenderableWidget(startStopBtn);
-        y += 34;
+        ).bounds(this.width / 2 - 55, botY - 10, 110, 20).build());
 
-        // ---- Bottom row buttons ----
-        addRenderableWidget(Button.builder(
-                Component.literal("Advanced"),
-                btn -> buildAdvanced()
-        ).bounds(cx - 100, this.height - 50, 70, 20).build());
-
-        addRenderableWidget(Button.builder(
-                Component.literal("Core"),
-                btn -> buildCorePage()
-        ).bounds(cx - 25, this.height - 50, 50, 20).build());
-
-        addButton(cx + 30, this.height - 50, 70, "Save", () -> saveAndClose());
-
-        addRenderableWidget(Button.builder(
-                Component.translatable("gui.done"),
-                btn -> onClose()
-        ).bounds(cx + 105, this.height - 50, 60, 20).build());
+        // Four small buttons
+        btn(this.width / 2 - 128, botY + 12, 60, t("easytier.advanced"), () -> buildAdvanced());
+        btn(this.width / 2 - 64, botY + 12, 40, t("easytier.core"), () -> buildCorePage());
+        btn(this.width / 2 - 20, botY + 12, 40, t("easytier.save"), () -> saveAndClose());
+        btn(this.width / 2 + 24, botY + 12, 40, t("easytier.back"), () -> onClose());
     }
 
-    // ============== ADVANCED PAGE ==============
+    // ============ ADVANCED ============
     private void buildAdvanced() {
         showingAdvanced = true;
         clearWidgets();
         int cx = this.width / 2;
-        int y = 25;
+        int y = 22;
+        addTitle(y, "easytier.advanced.title"); y += 20;
 
-        addTitle(cx, y, "Advanced Settings"); y += 24;
+        toggle(cx, y, "easytier.encryption", config.enableEncryption, v -> config.enableEncryption = v); y += 18;
+        toggle(cx, y, "easytier.ipv6", config.enableIpv6, v -> config.enableIpv6 = v); y += 18;
+        toggle(cx, y, "easytier.latency_first", config.latencyFirst, v -> config.latencyFirst = v); y += 18;
+        toggle(cx, y, "easytier.kcp_proxy", config.enableKcpProxy, v -> config.enableKcpProxy = v); y += 18;
+        toggle(cx, y, "easytier.quic_proxy", config.enableQuicProxy, v -> config.enableQuicProxy = v); y += 18;
+        toggle(cx, y, "easytier.disable_p2p", config.disableP2p, v -> config.disableP2p = v); y += 20;
 
-        // Flags
-        addToggle(cx, y, "Encryption", config.enableEncryption, v -> config.enableEncryption = v); y += 20;
-        addToggle(cx, y, "IPv6", config.enableIpv6, v -> config.enableIpv6 = v); y += 20;
-        addToggle(cx, y, "Latency First", config.latencyFirst, v -> config.latencyFirst = v); y += 20;
-        addToggle(cx, y, "KCP Proxy", config.enableKcpProxy, v -> config.enableKcpProxy = v); y += 20;
-        addToggle(cx, y, "QUIC Proxy", config.enableQuicProxy, v -> config.enableQuicProxy = v); y += 20;
-        addToggle(cx, y, "Disable P2P", config.disableP2p, v -> config.disableP2p = v); y += 22;
+        field(cx, y, 180, "easytier.rpc_host", null, config.rpcHost); y += 20;
+        field(cx, y, 60, "easytier.rpc_port", null, String.valueOf(config.rpcPort)); y += 20;
+        field(cx, y, 240, "easytier.listen_url", null, config.listenUrl); y += 20;
+        field(cx, y, 60, "easytier.protocol", null, config.defaultProtocol); y += 20;
 
-        // RPC
-        addField(cx, y, 200, "rpcHost", "RPC Host", config.rpcHost, f -> {});
-        y += 22;
-        addField(cx, y, 60, "rpcPort", "RPC Port", String.valueOf(config.rpcPort), f -> {}); y += 22;
+        toggle(cx, y, "easytier.auto_start", config.autoStart, v -> config.autoStart = v); y += 18;
+        toggle(cx, y, "easytier.hud", config.hudEnabled, v -> config.hudEnabled = v); y += 20;
 
-        // Listen URL
-        addField(cx, y, 280, "listenUrl", "Listen URL", config.listenUrl, f -> {}); y += 22;
+        field(cx, y, 240, "easytier.api_mirror", null, config.apiMirror); y += 20;
+        field(cx, y, 240, "easytier.dl_mirror", null, config.downloadMirror); y += 24;
 
-        // Default protocol
-        addField(cx, y, 80, "defaultProto", "Protocol", config.defaultProtocol, f -> {}); y += 22;
-
-        // Auto-start
-        addToggle(cx, y, "Auto Start", config.autoStart, v -> config.autoStart = v); y += 20;
-
-        // HUD
-        addToggle(cx, y, "HUD", config.hudEnabled, v -> config.hudEnabled = v); y += 24;
-
-        // Mirror
-        addField(cx, y, 280, "apiMirror", "API Mirror", config.apiMirror, f -> config.apiMirror = f.getValue()); y += 22;
-        addField(cx, y, 280, "dlMirror", "Download Mirror", config.downloadMirror, f -> config.downloadMirror = f.getValue()); y += 22;
-
-        // Back
-        addRenderableWidget(Button.builder(
-                Component.literal("Back"),
-                btn -> { saveConfig(); buildMain(); }
-        ).bounds(cx - 80, this.height - 30, 70, 20).build());
-        addRenderableWidget(Button.builder(
-                Component.literal("Save"),
-                btn -> { saveConfig(); buildMain(); }
-        ).bounds(cx, this.height - 30, 70, 20).build());
+        // Bottom buttons
+        int botY = this.height - 28;
+        btn(this.width / 2 - 80, botY, 70, t("easytier.back"), () -> { saveConfig(); buildMain(); });
+        btn(this.width / 2 + 10, botY, 70, t("easytier.save"), () -> { saveConfig(); buildMain(); });
     }
 
-    // ============== CORE PAGE (Version/Download) ==============
-    private EditBox versionField;
-    private String dlStatus = "";
-
+    // ============ CORE ============
     private void buildCorePage() {
         showingAdvanced = true;
         clearWidgets();
         int cx = this.width / 2;
-        int y = 25;
+        int y = 22;
+        addTitle(y, "easytier.core.title"); y += 20;
 
-        addTitle(cx, y, "Core Management"); y += 24;
-        addRenderableWidget(new MultiLineTextWidget(cx - 120, y,
-                Component.literal("§eCurrent: " + NativeLoader.getCurrentVersion()), this.font));
+        addRenderableWidget(new MultiLineTextWidget(cx - 100, y,
+                Component.literal("§e" + t("easytier.core.current") + NativeLoader.getCurrentVersion()), this.font));
         y += 18;
 
-        // Version input
-        versionField = new EditBox(this.font, cx - 80, y, 120, 20, Component.empty());
-        versionField.setHint(Component.literal("v2.6.4"));
+        versionField = new EditBox(this.font, cx - 70, y, 110, 20, Component.empty());
+        versionField.setHint(Component.translatable("easytier.core.version_hint"));
         addRenderableWidget(versionField);
-
-        addButton(cx + 45, y, 55, "Versions", () -> fetchVersions());
-        addButton(cx + 105, y, 60, "Download", () -> downloadVersion());
+        btn(cx + 45, y, 50, t("easytier.core.versions"), () -> fetchVersions());
+        btn(cx + 100, y, 50, t("easytier.core.download"), () -> downloadVersion());
         y += 24;
 
-        // Download status
-        addRenderableWidget(new MultiLineTextWidget(cx - 130, y,
+        addRenderableWidget(new MultiLineTextWidget(cx - 110, y,
                 Component.literal("§7" + dlStatus), this.font));
-        y += 20;
+        y += 22;
 
-        // Mirror field
-        addField(cx, y, 260, "dlMirror2", "Download Mirror", config.downloadMirror,
-                f -> config.downloadMirror = f.getValue());
-        y += 24;
+        field(cx, y, 240, "easytier.dl_mirror", null, config.downloadMirror); y += 24;
 
-        addRenderableWidget(Button.builder(
-                Component.literal("Back"),
-                btn -> { saveConfig(); buildMain(); }
-        ).bounds(cx - 40, this.height - 30, 80, 20).build());
+        int botY = this.height - 28;
+        btn(this.width / 2 - 35, botY, 70, t("easytier.back"), () -> { saveConfig(); buildMain(); });
     }
 
-    // ============== Helpers ==============
-    private void addTitle(int cx, int y, String text) {
-        addRenderableWidget(new MultiLineTextWidget(cx - 60, y,
-                Component.literal(text).withColor(0xFFAA00), this.font));
+    // ============ HELPERS ============
+    private String t(String key) {
+        return Component.translatable(key).getString();
     }
 
-    private void addField(int cx, int y, int w, String id, String hint, String value,
-                          java.util.function.Consumer<EditBox> setter) {
-        int x = cx - w / 2;
-        EditBox field = new EditBox(this.font, x, y, w, 16, Component.empty());
-        field.setValue(value != null ? value : "");
-        field.setHint(Component.literal(hint));
-        field.setMaxLength(256);
-        addRenderableWidget(field);
-        if (setter != null) setter.accept(field);
+    private void addTitle(int y, String key) {
+        addRenderableWidget(new MultiLineTextWidget(this.width / 2 - 50, y,
+                Component.translatable(key).withColor(0xFFAA00), this.font));
     }
 
-    private void addToggle(int cx, int y, String label, boolean val, java.util.function.Consumer<Boolean> setter) {
+    private EditBox field(int cx, int y, int w, String labelKey, String hintKey, String value) {
+        if (labelKey != null) {
+            addRenderableWidget(new MultiLineTextWidget(cx - w / 2 - 80, y,
+                    Component.translatable(labelKey), this.font));
+        }
+        EditBox f = new EditBox(this.font, cx - w / 2, y, w, 16, Component.empty());
+        f.setValue(value != null ? value : "");
+        if (hintKey != null) f.setHint(Component.translatable(hintKey));
+        f.setMaxLength(256);
+        addRenderableWidget(f);
+        return f;
+    }
+
+    private void toggle(int cx, int y, String key, boolean val, java.util.function.Consumer<Boolean> setter) {
         var btn = CycleButton.onOffBuilder(val).create(cx - 80, y, 160, 16,
-                Component.literal(label), (b, v) -> setter.accept(v));
+                Component.translatable(key), (b, v) -> setter.accept(v));
         addRenderableWidget(btn);
     }
 
-    private void addButton(int x, int y, int w, String label, Runnable action) {
-        addRenderableWidget(Button.builder(Component.literal(label), btn -> action.run())
+    private void btn(int x, int y, int w, String label, Runnable action) {
+        addRenderableWidget(Button.builder(Component.literal(label), b -> action.run())
                 .bounds(x, y, w, 16).build());
     }
 
-    // ============== Actions ==============
+    // ============ ACTIONS ============
     private void toggleProcess() {
         var proc = EasyTierMod.getEasyTierProcess();
-        if (proc != null && proc.isRunning()) {
-            EasyTierMod.stopEasyTier();
-        } else {
-            EasyTierMod.startEasyTier();
-        }
+        if (proc != null && proc.isRunning()) EasyTierMod.stopEasyTier();
+        else EasyTierMod.startEasyTier();
         buildMain();
     }
 
     private void addConnector() {
         String url = peerUrlField != null ? peerUrlField.getValue().trim() : "";
-        if (url.isEmpty()) { statusText = "Enter a peer URL first"; buildMain(); return; }
+        if (url.isEmpty()) { connectorList = t("easytier.peer_url.hint"); buildMain(); return; }
         EasyTierCli.execute(config, "connector", "add", url)
-                .thenAccept(r -> { connectorList = "Added: " + url; buildMain(); })
-                .exceptionally(e -> { connectorList = "Error: " + e.getMessage(); buildMain(); return null; });
+                .thenAccept(r -> { connectorList = "Added"; buildMain(); })
+                .exceptionally(e -> { connectorList = "Error"; buildMain(); return null; });
     }
 
     private void refreshConnectors() {
-        connectorList = "Loading...";
+        connectorList = "...";
         EasyTierCli.execute(config, "connector", "list").thenAccept(r -> {
-            connectorList = r.trim().isEmpty() ? "(none)" : r.trim().lines().count() + " peers";
+            connectorList = r.trim().isEmpty() ? t("easytier.peers.none") : r.trim().lines().count() + " peers";
             buildMain();
         }).exceptionally(e -> { connectorList = "Error"; buildMain(); return null; });
     }
 
     private void fetchVersions() {
-        dlStatus = "Fetching...";
-        NativeLoader.fetchAvailableVersions().thenAccept(versions -> {
-            if (!versions.isEmpty()) {
-                versionField.setValue(versions.get(0).tag);
-                var sb = new StringBuilder();
-                for (int i = 0; i < Math.min(8, versions.size()); i++)
-                    sb.append(versions.get(i).tag).append(" ");
-                dlStatus = sb.toString();
-            } else dlStatus = "No versions found";
+        dlStatus = t("easytier.core.fetching");
+        NativeLoader.fetchAvailableVersions().thenAccept(vs -> {
+            if (vs.isEmpty()) { dlStatus = t("easytier.core.no_versions"); buildCorePage(); return; }
+            versionField.setValue(vs.get(0).tag);
+            var sb = new StringBuilder();
+            for (int i = 0; i < Math.min(10, vs.size()); i++)
+                sb.append(vs.get(i).tag).append("  ");
+            dlStatus = sb.toString();
             buildCorePage();
-        }).exceptionally(e -> { dlStatus = "Error: " + e.getMessage(); buildCorePage(); return null; });
+        }).exceptionally(e -> { dlStatus = "Error"; buildCorePage(); return null; });
     }
 
     private void downloadVersion() {
         String v = versionField != null ? versionField.getValue().trim() : "";
-        if (v.isEmpty()) { dlStatus = "Enter a version first"; buildCorePage(); return; }
+        if (v.isEmpty()) { dlStatus = t("easytier.core.enter_version"); buildCorePage(); return; }
         dlStatus = "Downloading " + v + "...";
         buildCorePage();
-        NativeLoader.downloadUpdate(v, msg -> {
-            dlStatus = msg;
-            buildCorePage();
-        });
+        NativeLoader.downloadUpdate(v, msg -> { dlStatus = msg; buildCorePage(); });
     }
 
     private void saveConfig() {
@@ -290,10 +231,7 @@ public class EasyTierConfigScreen extends Screen {
         config.save(FabricLoader.getInstance().getConfigDir());
     }
 
-    private void saveAndClose() {
-        saveConfig();
-        onClose();
-    }
+    private void saveAndClose() { saveConfig(); onClose(); }
 
     @Override
     public void onClose() {
@@ -301,12 +239,10 @@ public class EasyTierConfigScreen extends Screen {
         if (this.minecraft != null) this.minecraft.setScreen(parent);
     }
 
-    @Override
-    public boolean isPauseScreen() { return false; }
+    @Override public boolean isPauseScreen() { return false; }
 
     @Override
     public void render(GuiGraphics ctx, int mx, int my, float delta) {
         super.render(ctx, mx, my, delta);
-        ctx.drawCenteredString(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
     }
 }
