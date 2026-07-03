@@ -6,21 +6,21 @@
   "easytier.title": "EasyTier 联机",
   "easytier.status.running": "运行中",
   "easytier.status.stopped": "已停止",
-  "easytier.status.not_installed": "未安装 - 请先去Core页面下载",
+  "easytier.status.not_installed": "二进制未安装",
 
   "easytier.hostname": "主机名",
   "easytier.hostname.hint": "例如: Player1",
   "easytier.network_name": "房间名",
   "easytier.network_name.hint": "联机组名",
   "easytier.network_secret": "房间密码",
-  "easytier.network_secret.hint": "留空则不设密码",
-  "easytier.peer_url": "服务器地址",
-  "easytier.peer_url.hint": "tcp://服务器IP:端口",
+  "easytier.network_secret.hint": "留空不设密码",
+  "easytier.peer_url": "服务器",
+  "easytier.peer_url.hint": "tcp://IP:端口",
   "easytier.peers": "节点",
   "easytier.peers.none": "(无)",
 
-  "easytier.start": "启动联机",
-  "easytier.stop": "停止联机",
+  "easytier.start": "启动",
+  "easytier.stop": "停止",
 
   "easytier.advanced": "高级",
   "easytier.core": "内核",
@@ -40,15 +40,7 @@
   "easytier.protocol": "协议",
   "easytier.auto_start": "自动启动",
   "easytier.hud": "HUD显示",
-  "easytier.api_mirror": "API镜像",
-  "easytier.dl_mirror": "下载镜像",
 
   "easytier.core.title": "内核管理",
-  "easytier.core.current": "当前版本: ",
-  "easytier.core.version_hint": "版本号 如v2.6.4",
-  "easytier.core.versions": "版本列表",
-  "easytier.core.download": "下载",
-  "easytier.core.fetching": "获取中...",
-  "easytier.core.no_versions": "未找到版本",
-  "easytier.core.enter_version": "请先输入版本号"
+  "easytier.core.current": "当前版本: "
 }

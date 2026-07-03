@@ -176,8 +176,8 @@ public class EasyTierConfigScreen extends Screen {
 
     private EditBox addRow(String key, String val, int cx, int y) {
         String label = t("easytier." + key);
-        addText(cx - 124, y + 1, 0xAAAAAA, label);
-        EditBox f = new EditBox(this.font, cx - 50, y, 160, 14, Component.empty());
+        addText(cx - 150, y + 1, 0xAAAAAA, label);
+        EditBox f = new EditBox(this.font, cx - 40, y, 150, 14, Component.empty());
         f.setValue(val != null ? val : "");
         f.setHint(Component.literal(t("easytier." + key + ".hint")));
         f.setMaxLength(256);
@@ -186,8 +186,8 @@ public class EasyTierConfigScreen extends Screen {
     }
     private void addRow2(String key, String val, int cx, int y) {
         String label = t("easytier." + key);
-        addText(cx - 124, y + 1, 0xAAAAAA, label);
-        EditBox f = new EditBox(this.font, cx - 50, y, 160, 14, Component.empty());
+        addText(cx - 150, y + 1, 0xAAAAAA, label);
+        EditBox f = new EditBox(this.font, cx - 40, y, 150, 14, Component.empty());
         f.setValue(val != null ? val : "");
         f.setMaxLength(256);
         addRenderableWidget(f);
