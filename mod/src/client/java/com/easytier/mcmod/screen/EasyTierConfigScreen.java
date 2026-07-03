@@ -42,10 +42,15 @@ public class EasyTierConfigScreen extends Screen {
     private CycleButton<String> hudPositionCycle;
     private CycleButton<String> hudColorCycle;
 
+    // Mirror settings
+    private EditBox apiMirrorField;
+    private EditBox downloadMirrorField;
+
     // Buttons
     private Button saveButton;
-    private Button installButton;
-    private Button checkUpdateButton;
+    private Button versionsButton;
+    private EditBox downloadVersionField;
+    private Button downloadButton;
     private Button startButton;
     private Button stopButton;
 
@@ -187,29 +192,58 @@ public class EasyTierConfigScreen extends Screen {
 
         y += 10;
 
-        // ---- Section: Actions ----
+        // ---- Section: Mirror ----
         addRenderableOnly(new MultiLineTextWidget(
-                LEFT_COL, y, Component.translatable("config.easytier-mcmod.section.actions").withColor(0xFFAA00),
+                LEFT_COL, y, Component.translatable("config.easytier-mcmod.section.mirror").withColor(0xFFAA00),
                 this.font
         ));
         y += ROW_HEIGHT;
 
-        // Action buttons row
+        addLabel(LEFT_COL, y, "config.easytier-mcmod.api_mirror");
+        apiMirrorField = addField(RIGHT_COL, y, 320, config.apiMirror);
+        apiMirrorField.setHint(Component.literal("https://api.github.com (default)"));
+        addRenderableWidget(apiMirrorField);
+        y += ROW_HEIGHT;
+
+        addLabel(LEFT_COL, y, "config.easytier-mcmod.download_mirror");
+        downloadMirrorField = addField(RIGHT_COL, y, 320, config.downloadMirror);
+        downloadMirrorField.setHint(Component.literal("GitHub Releases (default)"));
+        addRenderableWidget(downloadMirrorField);
+        y += ROW_HEIGHT + 5;
+
+        // ---- Section: Download ----
+        addRenderableOnly(new MultiLineTextWidget(
+                LEFT_COL, y, Component.translatable("config.easytier-mcmod.section.download").withColor(0xFFAA00),
+                this.font
+        ));
+        y += ROW_HEIGHT;
+
+        // Version: [________] [Versions] [Download]
+        versionsButton = Button.builder(
+                Component.literal("Versions"),
+                btn -> fetchVersions()
+        ).bounds(LEFT_COL, y, 80, 20).build();
+        addRenderableWidget(versionsButton);
+
+        downloadVersionField = new EditBox(this.font, LEFT_COL + 85, y, 160, 20,
+                Component.literal(""));
+        downloadVersionField.setHint(Component.literal("e.g. v2.6.4"));
+        addRenderableWidget(downloadVersionField);
+
+        downloadButton = Button.builder(
+                Component.literal("Download"),
+                btn -> downloadVersion()
+        ).bounds(LEFT_COL + 250, y, 80, 20).build();
+        addRenderableWidget(downloadButton);
+        y += ROW_HEIGHT;
+
+        addRenderableOnly(new MultiLineTextWidget(LEFT_COL, y,
+                Component.literal("§7Current: " + NativeLoader.getCurrentVersion()), this.font));
+        y += ROW_HEIGHT + 5;
+
+        // ---- Section: Process ----
         int btnWidth = 120;
         int btnSpacing = 5;
-
-        installButton = Button.builder(
-                Component.translatable("config.easytier-mcmod.install"),
-                btn -> installEasyTier()
-        ).bounds(LEFT_COL, y, btnWidth, 20).build();
-        addRenderableWidget(installButton);
-
-        checkUpdateButton = Button.builder(
-                Component.translatable("config.easytier-mcmod.check_update"),
-                btn -> checkForUpdate()
-        ).bounds(LEFT_COL + btnWidth + btnSpacing, y, btnWidth, 20).build();
-        addRenderableWidget(checkUpdateButton);
-        y += ROW_HEIGHT;
 
         startButton = Button.builder(
                 Component.translatable("config.easytier-mcmod.start"),
@@ -283,6 +317,9 @@ public class EasyTierConfigScreen extends Screen {
         config.enableQuicProxy = quicToggle.getValue();
         config.disableP2p = disableP2pToggle.getValue();
 
+        config.apiMirror = apiMirrorField.getValue();
+        config.downloadMirror = downloadMirrorField.getValue();
+
         config.hudEnabled = hudEnabledToggle.getValue();
         config.hudPosition = hudPositionCycle.getValue();
         config.hudColor = stringToColor(hudColorCycle.getValue());
@@ -295,34 +332,43 @@ public class EasyTierConfigScreen extends Screen {
         }
     }
 
-    private void installEasyTier() {
-        // This triggers extraction of bundled binaries
-        try {
-            NativeLoader.getBinDir();
-            if (this.minecraft != null && this.minecraft.player != null) {
-                this.minecraft.player.displayClientMessage(
-                        Component.translatable("message.easytier-mcmod.install_done"), false);
+    private void fetchVersions() {
+        sendMessage("§6Fetching versions...");
+        NativeLoader.fetchAvailableVersions().thenAccept(versions -> {
+            if (versions.isEmpty()) {
+                sendMessage("§cNo versions found. Check mirror settings.");
+                return;
             }
-        } catch (Exception e) {
-            if (this.minecraft != null && this.minecraft.player != null) {
-                this.minecraft.player.displayClientMessage(
-                        Component.literal("§cInstall failed: " + e.getMessage()), false);
+            // Show top 5 in chat, fill version field with latest
+            if (!versions.isEmpty() && downloadVersionField != null) {
+                downloadVersionField.setValue(versions.get(0).tag);
             }
-        }
+            StringBuilder sb = new StringBuilder("§6Versions: ");
+            for (int i = 0; i < Math.min(5, versions.size()); i++) {
+                if (i > 0) sb.append("§7, ");
+                sb.append("§e").append(versions.get(i).tag);
+            }
+            sendMessage(sb.toString());
+        }).exceptionally(e -> {
+            sendMessage("§cFailed: " + e.getMessage());
+            return null;
+        });
     }
 
-    private void checkForUpdate() {
-        if (this.minecraft != null && this.minecraft.player != null) {
-            this.minecraft.player.displayClientMessage(
-                    Component.translatable("message.easytier-mcmod.checking_update"), false);
+    private void downloadVersion() {
+        String version = downloadVersionField.getValue();
+        if (version.isEmpty()) {
+            sendMessage("§cEnter a version tag (e.g. v2.6.4) or click 'Versions' to list");
+            return;
         }
-
-        NativeLoader.checkForUpdate().thenAccept(latestVersion -> {
-            if (latestVersion == null) {
-                sendMessage("§aEasyTier is up to date (" + NativeLoader.getCurrentVersion() + ")");
+        sendMessage("§6Downloading " + version + "...");
+        NativeLoader.downloadUpdate(version, msg -> {
+            sendMessage("§e" + msg);
+        }).thenAccept(success -> {
+            if (success) {
+                sendMessage("§aDownload complete! You can now start EasyTier.");
             } else {
-                sendMessage("§eNew version available: " + latestVersion + " (current: " + NativeLoader.getCurrentVersion() + ")");
-                sendMessage("§eUse /easytier update " + latestVersion + " to upgrade");
+                sendMessage("§cDownload failed. Check mirror or try another version.");
             }
         });
     }

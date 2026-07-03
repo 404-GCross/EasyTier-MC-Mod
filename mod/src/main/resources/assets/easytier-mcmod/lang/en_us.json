@@ -37,14 +37,13 @@
   "config.easytier-mcmod.hud_color.red": "Red",
   "config.easytier-mcmod.hud_color.cyan": "Cyan",
 
-  "config.easytier-mcmod.section.actions": "Actions",
-  "config.easytier-mcmod.install": "Install / Extract Binaries",
-  "config.easytier-mcmod.check_update": "Check for Updates",
+  "config.easytier-mcmod.section.mirror": "Mirror Settings",
+  "config.easytier-mcmod.api_mirror": "API Mirror",
+  "config.easytier-mcmod.download_mirror": "Download Mirror",
+  "config.easytier-mcmod.section.download": "Download EasyTier",
   "config.easytier-mcmod.start": "Start EasyTier",
   "config.easytier-mcmod.stop": "Stop EasyTier",
   "config.easytier-mcmod.save": "Save Configuration",
 
-  "message.easytier-mcmod.config_saved": "EasyTier config saved!",
-  "message.easytier-mcmod.install_done": "EasyTier binaries extracted successfully!",
-  "message.easytier-mcmod.checking_update": "Checking for updates..."
+  "message.easytier-mcmod.config_saved": "EasyTier config saved!"
 }

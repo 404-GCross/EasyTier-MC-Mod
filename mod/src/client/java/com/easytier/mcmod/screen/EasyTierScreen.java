@@ -9,6 +9,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -26,7 +27,7 @@ public class EasyTierScreen extends Screen {
     private static final int CONTENT_Y = 35;
     private static final int CONTENT_X = 10;
 
-    private enum Tab { STATUS, PEERS, ROUTES, LOGS, CONFIG }
+    private enum Tab { STATUS, PEERS, ROUTES, LOGS, DOWNLOAD, CONFIG }
     private Tab currentTab = Tab.STATUS;
 
     // Cached data
@@ -34,6 +35,8 @@ public class EasyTierScreen extends Screen {
     private List<String> peerLines = new ArrayList<>();
     private List<String> routeLines = new ArrayList<>();
     private List<String> logLines = new ArrayList<>();
+    private List<String> versionLines = new ArrayList<>();
+    private String downloadVersionText = "";
 
     private int scrollOffset = 0;
     private static final int MAX_VISIBLE_LINES = 20;
@@ -73,6 +76,12 @@ public class EasyTierScreen extends Screen {
         tabX += TAB_WIDTH + 2;
 
         addRenderableWidget(Button.builder(
+                Component.literal("Downld"),
+                btn -> switchTab(Tab.DOWNLOAD)
+        ).bounds(tabX, tabY, TAB_WIDTH, 20).build());
+        tabX += TAB_WIDTH + 2;
+
+        addRenderableWidget(Button.builder(
                 Component.literal("Config"),
                 btn -> {
                     if (this.minecraft != null) {
@@ -98,6 +107,57 @@ public class EasyTierScreen extends Screen {
                 Component.literal("▼"),
                 btn -> { scrollOffset++; }
         ).bounds(this.width - 30, this.height - 35, 20, 20).build());
+
+        // Download tab widgets
+        int dlY = this.height - 80;
+        var dlVersionField = new EditBox(this.font, CONTENT_X, dlY, 150, 20, Component.literal(""));
+        dlVersionField.setHint(Component.literal("e.g. v2.6.4"));
+        dlVersionField.setValue(downloadVersionText);
+        dlVersionField.setResponder(s -> downloadVersionText = s);
+        addRenderableWidget(dlVersionField);
+
+        addRenderableWidget(Button.builder(
+                Component.literal("Fetch"),
+                btn -> {
+                    versionLines.clear();
+                    versionLines.add("Fetching...");
+                    NativeLoader.fetchAvailableVersions().thenAccept(versions -> {
+                        versionLines.clear();
+                        if (versions.isEmpty()) {
+                            versionLines.add("No versions found. Check mirror settings.");
+                        } else {
+                            versionLines.add("--- Available Versions ---");
+                            for (int i = 0; i < Math.min(20, versions.size()); i++) {
+                                var v = versions.get(i);
+                                versionLines.add(v.tag + (v.prerelease ? " [pre]" : "") + " - " + v.name);
+                            }
+                            dlVersionField.setValue(versions.get(0).tag);
+                            downloadVersionText = versions.get(0).tag;
+                        }
+                    }).exceptionally(e -> {
+                        versionLines.clear();
+                        versionLines.add("Error: " + e.getMessage());
+                        return null;
+                    });
+                }
+        ).bounds(CONTENT_X + 155, dlY, 50, 20).build());
+
+        addRenderableWidget(Button.builder(
+                Component.literal("Download"),
+                btn -> {
+                    String v = downloadVersionText;
+                    if (v.isEmpty()) {
+                        versionLines.add(0, "Enter a version tag first!");
+                        return;
+                    }
+                    versionLines.add(0, "Downloading " + v + "...");
+                    NativeLoader.downloadUpdate(v, msg -> {
+                        versionLines.add(0, msg);
+                    }).thenAccept(success -> {
+                        versionLines.add(0, success ? "Done! Use /easytier start" : "Download failed!");
+                    });
+                }
+        ).bounds(CONTENT_X + 210, dlY, 70, 20).build());
 
         // Done button
         addRenderableWidget(Button.builder(
@@ -203,6 +263,14 @@ public class EasyTierScreen extends Screen {
                     logLines = List.of("EasyTier is not running. Start it from the Config tab.");
                 }
             }
+
+            case DOWNLOAD -> {
+                // Keep existing data, versions fetched on demand
+                if (versionLines.isEmpty()) {
+                    versionLines.add("Click 'Fetch Versions' to list available releases.");
+                    versionLines.add("Then enter a version tag and click 'Download'.");
+                }
+            }
         }
     }
 
@@ -220,6 +288,11 @@ public class EasyTierScreen extends Screen {
             case PEERS -> renderLines(context, y, peerLines);
             case ROUTES -> renderLines(context, y, routeLines);
             case LOGS -> renderLines(context, y, logLines);
+            case DOWNLOAD -> {
+                context.drawString(this.font, "EasyTier: " + NativeLoader.getCurrentVersion(), CONTENT_X, y, 0xFFAA00);
+                y += 14;
+                renderLines(context, y, versionLines);
+            }
             case CONFIG -> {
                 // Config tab just shows quick summary; full edit via Config button
                 var c = EasyTierMod.getConfig();

@@ -37,6 +37,10 @@ public class ModConfig {
     public String hudPosition = "top_right"; // top_left, top_right, bottom_left, bottom_right
     public int hudColor = 0x00FF00; // green
 
+    // ---- Download / Mirror settings ----
+    public String apiMirror = "";        // GitHub API mirror, empty = use api.github.com
+    public String downloadMirror = "";   // Binary download mirror, empty = use GitHub releases
+
     // ---- Internal paths ----
     public transient Path easyTierDir; // resolved at runtime
 
