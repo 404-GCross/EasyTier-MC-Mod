@@ -86,35 +86,67 @@ public class EasyTierConfigScreen extends Screen {
     }
 
     // ============ ADVANCED ============
+    private int advScrollY = 0, advMaxScroll = 0;
+
     private void buildAdvanced() {
-        showingAdvanced = true;
+        showingAdvanced = true; advScrollY = 0;
         clearWidgets();
         int cx = this.width / 2;
-        int y = 22;
-        addTitle(y, "easytier.advanced.title"); y += 20;
+        int frameTop = 18, frameH = this.height - frameTop - 44;
+        int y = frameTop + 5;
 
+        // Build content with scroll offset
+        y -= advScrollY;
+
+        addTitle(y, "easytier.advanced.title"); y += 20;
         toggle(cx, y, "easytier.encryption", config.enableEncryption, v -> config.enableEncryption = v); y += 18;
         toggle(cx, y, "easytier.ipv6", config.enableIpv6, v -> config.enableIpv6 = v); y += 18;
         toggle(cx, y, "easytier.latency_first", config.latencyFirst, v -> config.latencyFirst = v); y += 18;
         toggle(cx, y, "easytier.kcp_proxy", config.enableKcpProxy, v -> config.enableKcpProxy = v); y += 18;
         toggle(cx, y, "easytier.quic_proxy", config.enableQuicProxy, v -> config.enableQuicProxy = v); y += 18;
         toggle(cx, y, "easytier.disable_p2p", config.disableP2p, v -> config.disableP2p = v); y += 20;
-
         field(cx, y, 180, "easytier.rpc_host", null, config.rpcHost); y += 20;
         field(cx, y, 60, "easytier.rpc_port", null, String.valueOf(config.rpcPort)); y += 20;
         field(cx, y, 240, "easytier.listen_url", null, config.listenUrl); y += 20;
         field(cx, y, 60, "easytier.protocol", null, config.defaultProtocol); y += 20;
-
         toggle(cx, y, "easytier.auto_start", config.autoStart, v -> config.autoStart = v); y += 18;
         toggle(cx, y, "easytier.hud", config.hudEnabled, v -> config.hudEnabled = v); y += 20;
-
         field(cx, y, 240, "easytier.api_mirror", null, config.apiMirror); y += 20;
         field(cx, y, 240, "easytier.dl_mirror", null, config.downloadMirror); y += 24;
 
-        // Bottom buttons
+        y += advScrollY;
+        advMaxScroll = Math.max(0, y - (frameTop + frameH));
+
+        // Fixed bottom buttons
         int botY = this.height - 28;
         btn(this.width / 2 - 80, botY, 70, t("easytier.back"), () -> { saveConfig(); buildMain(); });
         btn(this.width / 2 + 10, botY, 70, t("easytier.save"), () -> { saveConfig(); buildMain(); });
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double h, double v) {
+        if (showingAdvanced) {
+            advScrollY = (int) Math.clamp(advScrollY - v * 20, 0, advMaxScroll);
+            buildAdvanced();
+            return true;
+        }
+        return super.mouseScrolled(mx, my, h, v);
+    }
+
+    @Override
+    public void render(GuiGraphics ctx, int mx, int my, float delta) {
+        super.render(ctx, mx, my, delta);
+        if (showingAdvanced) {
+            // Draw frame around content
+            int frameX = 3, frameY = 18, frameW = this.width - 6, frameH = this.height - frameY - 44;
+            ctx.fill(frameX, frameY, frameX + frameW, frameY + frameH, 0x20FFFFFF);
+            ctx.renderOutline(frameX, frameY, frameW, frameH, 0x88AAAAAA);
+            if (advMaxScroll > 0) {
+                int barH = Math.max(12, (int)((float)frameH / (frameH + advMaxScroll) * frameH));
+                int barY = frameY + (int)((float)advScrollY / advMaxScroll * (frameH - barH));
+                ctx.fill(frameX + frameW - 3, barY, frameX + frameW, barY + barH, 0x66FFFFFF);
+            }
+        }
     }
 
     // ============ CORE ============
