@@ -45,6 +45,10 @@
   "easytier.auto_start": "自动启动",
   "easytier.hud": "HUD显示",
 
+  "easytier.logs": "日志",
+  "easytier.logs.title": "进程日志",
+  "easytier.logs.not_running": "EasyTier 未运行，请先启动",
+
   "easytier.core.title": "内核管理",
   "easytier.core.current": "当前版本: ",
   "easytier.core.platform": "你的平台: ",

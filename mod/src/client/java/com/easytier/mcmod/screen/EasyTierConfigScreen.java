@@ -32,12 +32,13 @@ public class EasyTierConfigScreen extends Screen {
         clearWidgets();
         if (page == 0) buildMain();
         else if (page == 1) buildAdvanced();
-        else buildCore();
+        else if (page == 2) buildCore();
+        else buildLogs();
         bottomBar();
     }
 
     @Override public boolean mouseScrolled(double mx, double my, double h, double v) {
-        if (page == 1) {
+        if (page == 1 || page == 3) {
             scrollY = (int) Math.clamp(scrollY - v * 20, 0, Math.max(0, maxScroll));
             build();
             return true;
@@ -49,9 +50,9 @@ public class EasyTierConfigScreen extends Screen {
     private void bottomBar() {
         int bot = this.height - 24, cx = this.width / 2;
         if (page == 0) {
-            int[] ws = {56, 46, 56, 46}; // advance, core, save&close, close
-            String[] ls = {t("easytier.advanced"), t("easytier.core"), t("easytier.save"), "✕"};
-            Runnable[] as = {()->{page=1;build();}, ()->{page=2;build();}, this::saveAndClose, this::onClose};
+            int[] ws = {52, 46, 38, 52, 46};
+            String[] ls = {t("easytier.advanced"), t("easytier.core"), t("easytier.logs"), t("easytier.save"), "✕"};
+            Runnable[] as = {()->{page=1;build();}, ()->{page=2;build();}, ()->{page=3;build();}, this::saveAndClose, this::onClose};
             layoutButtons(cx, bot, ws, ls, as);
         } else {
             int[] ws = {56, 56, 46, 46};
@@ -181,6 +182,27 @@ public class EasyTierConfigScreen extends Screen {
 
         addRenderableWidget(Button.builder(Component.literal(t("easytier.open_folder")), b -> openFolder())
                 .bounds(cx - 44, y, 88, 18).build());
+    }
+
+    // ============ LOGS PAGE ============
+    private void buildLogs() {
+        int cx = this.width / 2, y = 26;
+        drawCentered(cx, y, t("easytier.logs.title"), 0xFFAA00); y += 18;
+
+        var proc = EasyTierMod.getEasyTierProcess();
+        if (proc == null || !proc.isRunning()) {
+            drawCentered(cx, y + 10, t("easytier.logs.not_running"), 0x888888);
+            return;
+        }
+
+        var logs = proc.getRecentLogs(500);
+        y -= scrollY;
+        for (String line : logs) {
+            if (line.length() > 70) line = line.substring(0, 67) + "...";
+            addText(4, y, 0xAAAAAA, line);
+            y += 10;
+        }
+        maxScroll = y + scrollY - (this.height - 40);
     }
 
     // ============ WIDGETS ============
