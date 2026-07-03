@@ -109,30 +109,47 @@ public class EasyTierConfigScreen extends Screen {
         addRenderableWidget(Button.builder(
                 Component.literal(running ? "■ " + t("easytier.stop") : "▶ " + t("easytier.start")),
                 b -> toggleProcess()).bounds(cx - 55, y, 110, 22).build());
+        y += 26;
+
+        // Log line
+        if (proc != null) {
+            var logs = proc.getRecentLogs(1);
+            if (!logs.isEmpty()) {
+                String last = logs.getFirst();
+                if (last.length() > 65) last = last.substring(0, 62) + "...";
+                drawCentered(cx, y, "§8" + last, 0x666666);
+            }
+        }
+        if (!running && NativeLoader.isInstalled()) {
+            drawCentered(cx, y, "§7Click Start to launch", 0x666666);
+        }
+        if (!NativeLoader.isInstalled()) {
+            drawCentered(cx, y, "§cGo to Core page to install binaries", 0xFF6666);
+        }
     }
 
     // ============ ADVANCED PAGE ============
     private void buildAdvanced() {
-        int cx = this.width / 2, y = 26 - scrollY, rh = 16;
-        drawCentered(cx, y, t("easytier.advanced.title"), 0xFFAA00); y += rh + 2;
+        int cx = this.width / 2, y = 26 - scrollY, gap = 20;
+        drawCentered(cx, y, t("easytier.advanced.title"), 0xFFAA00); y += gap;
 
         // Toggles
-        addToggle(cx, y, "encryption", config.enableEncryption, v -> config.enableEncryption = v); y += rh + 1;
-        addToggle(cx, y, "ipv6", config.enableIpv6, v -> config.enableIpv6 = v); y += rh + 1;
-        addToggle(cx, y, "latency_first", config.latencyFirst, v -> config.latencyFirst = v); y += rh + 1;
-        addToggle(cx, y, "kcp_proxy", config.enableKcpProxy, v -> config.enableKcpProxy = v); y += rh + 1;
-        addToggle(cx, y, "quic_proxy", config.enableQuicProxy, v -> config.enableQuicProxy = v); y += rh + 1;
+        addToggle(cx, y, "encryption", config.enableEncryption, v -> config.enableEncryption = v); y += gap;
+        addToggle(cx, y, "ipv6", config.enableIpv6, v -> config.enableIpv6 = v); y += gap;
+        addToggle(cx, y, "latency_first", config.latencyFirst, v -> config.latencyFirst = v); y += gap;
+        addToggle(cx, y, "kcp_proxy", config.enableKcpProxy, v -> config.enableKcpProxy = v); y += gap;
+        addToggle(cx, y, "quic_proxy", config.enableQuicProxy, v -> config.enableQuicProxy = v); y += gap;
         addToggle(cx, y, "disable_p2p", config.disableP2p, v -> config.disableP2p = v);
-        y += 4; drawHLine(y - 2); y += 4;
+        y += 8; drawHLine(y-4); y += 6;
 
-        addRow2("rpc_host", config.rpcHost, cx, y); y += rh + 2;
-        addRow2("rpc_port", String.valueOf(config.rpcPort), cx, y); y += rh + 2;
-        addRow2("listen_url", config.listenUrl, cx, y); y += rh + 2;
-        addRow2("protocol", config.defaultProtocol, cx, y); y += rh + 4;
-        y += 2; drawHLine(y - 2); y += 4;
+        addRow2("rpc_host", config.rpcHost, cx, y); y += gap;
+        addRow2("rpc_port", String.valueOf(config.rpcPort), cx, y); y += gap;
+        addRow2("listen_url", config.listenUrl, cx, y); y += gap;
+        addRow2("protocol", config.defaultProtocol, cx, y);
+        y += 8; drawHLine(y-4); y += 6;
 
-        addToggle(cx, y, "auto_start", config.autoStart, v -> config.autoStart = v); y += rh + 1;
-        addToggle(cx, y, "hud", config.hudEnabled, v -> config.hudEnabled = v); y += rh + 6;
+        addToggle(cx, y, "auto_start", config.autoStart, v -> config.autoStart = v); y += gap;
+        addToggle(cx, y, "hud", config.hudEnabled, v -> config.hudEnabled = v); y += gap + 10;
 
         maxScroll = y + scrollY - (this.height - 42);
     }
