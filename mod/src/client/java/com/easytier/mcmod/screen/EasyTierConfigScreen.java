@@ -181,8 +181,21 @@ public class EasyTierConfigScreen extends Screen {
         drawCentered(cx, y, cli + " → easytier-cli" + ext, 0x55FF55); y += 16;
 
         addRenderableWidget(Button.builder(Component.literal(t("easytier.open_folder")), b -> openFolder())
-                .bounds(cx - 44, y, 88, 18).build());
+                .bounds(cx - 80, y, 70, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("Test Binary"), b -> {
+            testResult = NativeLoader.testBinary();
+            build();
+        }).bounds(cx, y, 70, 18).build());
+        if (testResult != null) {
+            y += 22;
+            String[] lines = testResult.split("\n");
+            for (String line : lines) {
+                drawCentered(cx, y, "§e" + line, 0xFFFF55); y += 10;
+            }
+        }
     }
+
+    private String testResult = null;
 
     // ============ LOGS PAGE ============
     private void buildLogs() {

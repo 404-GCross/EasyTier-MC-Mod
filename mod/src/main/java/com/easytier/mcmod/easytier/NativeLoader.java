@@ -71,6 +71,27 @@ public class NativeLoader {
         return null;
     }
 
+    /** Run easytier-core --version and return the output. Used for diagnostics. */
+    public static String testBinary() {
+        try {
+            if (!isInstalled()) return "Binary not found at " + getBinDir().resolve(BINARY_NAME);
+            Path corePath = getBinDir().resolve(BINARY_NAME);
+            ProcessBuilder pb = new ProcessBuilder(corePath.toAbsolutePath().toString(), "--version");
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line).append("\n");
+            }
+            p.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+            int code = p.exitValue();
+            return (code == 0 ? "OK" : "Exit " + code) + ": " + sb.toString().trim();
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
     public static String getPlatformId() {
         String os = System.getProperty("os.name").toLowerCase();
         String arch = System.getProperty("os.arch").toLowerCase();
