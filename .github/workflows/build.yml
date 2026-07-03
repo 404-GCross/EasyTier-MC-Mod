@@ -26,7 +26,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build --no-daemon -Pfabric.loom.disableObfuscation=false
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
