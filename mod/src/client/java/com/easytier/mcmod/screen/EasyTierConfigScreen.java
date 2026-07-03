@@ -137,18 +137,28 @@ public class EasyTierConfigScreen extends Screen {
     // ============ CORE PAGE ============
     private void buildCore() {
         int cx = this.width / 2, y = 26;
+        String plat = NativeLoader.getPlatformId();
+        boolean win = plat.startsWith("windows");
+        String ext = win ? ".exe" : "";
+
         drawCentered(cx, y, t("easytier.core.title"), 0xFFAA00); y += 16;
 
         String v = NativeLoader.getCurrentVersion();
-        drawCentered(cx, y, v, v.equals("not installed") ? 0xFF5555 : 0x55FF55); y += 12;
-        drawCentered(cx, y, "Platform: " + NativeLoader.getPlatformId(), 0x888888); y += 18;
+        drawCentered(cx, y, v, v.equals("not installed") ? 0xFF5555 : 0x55FF55); y += 14;
 
         drawHLine(y); y += 8;
-        drawCentered(cx, y, "Place binaries in:", 0xAAAAAA); y += 12;
-        drawCentered(cx, y, ".minecraft/easytier/bin/", 0xFFFFFF); y += 12;
-        drawCentered(cx, y, "easytier-core + easytier-cli", 0xAAAAAA); y += 12;
+        drawCentered(cx, y, "Download from GitHub Releases:", 0xAAAAAA); y += 12;
+        drawCentered(cx, y, "github.com/EasyTier/EasyTier/releases", 0xFFFFFF); y += 12;
+        drawCentered(cx, y, "Your platform: " + plat, 0x888888); y += 14;
 
-        y += 4;
+        drawHLine(y); y += 8;
+        drawCentered(cx, y, "Rename & place in .minecraft/easytier/bin/:", 0xAAAAAA); y += 12;
+        String core = "easytier-core-" + plat + ext;
+        String cli  = "easytier-cli-" + plat + ext;
+        drawCentered(cx, y, core + " → easytier-core" + ext, 0x55FF55); y += 12;
+        drawCentered(cx, y, cli + " → easytier-cli" + ext, 0x55FF55); y += 14;
+
+        y += 2;
         addRenderableWidget(Button.builder(Component.literal("Open Folder"), b -> openFolder()).bounds(cx - 44, y, 88, 18).build());
     }
 
