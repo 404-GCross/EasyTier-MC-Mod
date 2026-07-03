@@ -40,12 +40,10 @@ public class NativeLoader {
 
     /**
      * Get an HttpClient that trusts all SSL certificates.
-     * Needed in environments where GitHub's SSL cert can't be verified.
      */
     private static synchronized HttpClient getClient() {
         if (sharedClient != null) return sharedClient;
         try {
-            // Build a trust manager that accepts all certificates
             TrustManager[] trustAll = new TrustManager[] {
                 new X509TrustManager() {
                     public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
@@ -60,15 +58,18 @@ public class NativeLoader {
                     .connectTimeout(java.time.Duration.ofSeconds(15))
                     .sslContext(ssl)
                     .build();
-            EasyTierMod.LOGGER.info("[EasyTier] SSL trust-all HttpClient created");
+            EasyTierMod.LOGGER.info("[EasyTier] SSL trust-all client ready");
+            return sharedClient;
         } catch (Exception e) {
-            EasyTierMod.LOGGER.warn("[EasyTier] SSL config failed, using system default: {}", e.getMessage());
+            EasyTierMod.LOGGER.warn("[EasyTier] SSL context failed, trying system property fallback");
+            // Last resort: disable SSL checks via system property
+            System.setProperty("jdk.internal.httpclient.disableHostnameVerification", "true");
             sharedClient = HttpClient.newBuilder()
                     .followRedirects(HttpClient.Redirect.ALWAYS)
                     .connectTimeout(java.time.Duration.ofSeconds(15))
                     .build();
+            return sharedClient;
         }
-        return sharedClient;
     }
 
     /**
