@@ -3,6 +3,7 @@ package com.easytier.mcmod;
 import com.easytier.mcmod.command.EasyTierCommands;
 import com.easytier.mcmod.config.ModConfig;
 import com.easytier.mcmod.easytier.EasyTierProcess;
+import com.easytier.mcmod.easytier.NativeLoader;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
@@ -42,6 +43,10 @@ public class EasyTierMod implements ModInitializer {
     }
 
     public static void startEasyTier() {
+        if (!NativeLoader.isInstalled()) {
+            LOGGER.warn("[EasyTier] Cannot start: binaries not installed");
+            return;
+        }
         if (easyTierProcess != null && easyTierProcess.isRunning()) {
             LOGGER.warn("[EasyTier] EasyTier is already running");
             return;
