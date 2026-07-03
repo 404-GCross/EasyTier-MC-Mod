@@ -25,7 +25,8 @@
   "easytier.advanced": "高级",
   "easytier.core": "内核",
   "easytier.back": "返回",
-  "easytier.save": "保存",
+  "easytier.save": "保存并关闭",
+  "easytier.cancel": "取消",
 
   "easytier.advanced.title": "高级设置",
   "easytier.encryption": "加密",

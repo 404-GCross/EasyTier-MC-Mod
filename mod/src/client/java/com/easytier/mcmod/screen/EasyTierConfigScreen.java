@@ -4,6 +4,7 @@ import com.easytier.mcmod.EasyTierMod;
 import com.easytier.mcmod.config.ModConfig;
 import com.easytier.mcmod.easytier.NativeLoader;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.screens.Screen;
@@ -24,6 +25,7 @@ public class EasyTierConfigScreen extends Screen {
         this.config = EasyTierMod.getConfig();
     }
 
+    // Re-check state every time init is called (window switch etc.)
     @Override protected void init() { page = 0; scrollY = 0; build(); }
 
     private void build() {
@@ -36,7 +38,7 @@ public class EasyTierConfigScreen extends Screen {
 
     @Override public boolean mouseScrolled(double mx, double my, double h, double v) {
         if (page == 1) {
-            scrollY = (int) Math.clamp(scrollY - v * 20, 0, maxScroll);
+            scrollY = (int) Math.clamp(scrollY - v * 20, 0, Math.max(0, maxScroll));
             build();
             return true;
         }
@@ -45,20 +47,30 @@ public class EasyTierConfigScreen extends Screen {
 
     // ============ BOTTOM BAR ============
     private void bottomBar() {
-        int bot = this.height - 24, bw = 52, gap = 2, cx = this.width / 2;
-        // On main page: [Advanced] [Core] [Save&Close] [Close]
-        // On subpages: [Back&Save] [Save&Close] [Close]
+        int bot = this.height - 24, cx = this.width / 2;
         if (page == 0) {
-            int bx = cx - (bw * 4 + gap * 3) / 2;
-            bbtn(bx, bot, bw, t("easytier.advanced"), () -> { page = 1; build(); }); bx += bw + gap;
-            bbtn(bx, bot, bw, t("easytier.core"), () -> { page = 2; build(); }); bx += bw + gap;
-            bbtn(bx, bot, bw, "Save&Close", this::saveAndClose); bx += bw + gap;
-            bbtn(bx, bot, bw, "Cancel", this::onClose);
+            int[] ws = {56, 46, 56, 46}; // advance, core, save&close, close
+            String[] ls = {t("easytier.advanced"), t("easytier.core"), t("easytier.save"), "✕"};
+            Runnable[] as = {()->{page=1;build();}, ()->{page=2;build();}, this::saveAndClose, this::onClose};
+            layoutButtons(cx, bot, ws, ls, as);
         } else {
-            int bx = cx - (bw * 3 + gap * 2) / 2;
-            bbtn(bx, bot, bw, t("easytier.back"), () -> { saveConfig(); page = 0; scrollY = 0; build(); }); bx += bw + gap;
-            bbtn(bx, bot, bw, "Save&Close", this::saveAndClose); bx += bw + gap;
-            bbtn(bx, bot, bw, "Cancel", this::onClose);
+            int[] ws = {56, 56, 46, 46};
+            String[] ls = {t("easytier.back"), t("easytier.save"), "", "✕"};
+            Runnable[] as = {()->{saveConfig();page=0;scrollY=0;build();}, this::saveAndClose, null, this::onClose};
+            layoutButtons(cx, bot, ws, ls, as);
+        }
+    }
+
+    private void layoutButtons(int cx, int y, int[] ws, String[] ls, Runnable[] as) {
+        int total = 0;
+        for (int w : ws) total += w;
+        int gap = 3, totalW = total + gap * (ws.length - 1);
+        int bx = cx - totalW / 2;
+        for (int i = 0; i < ws.length; i++) {
+            if (as[i] == null) continue;
+            addRenderableWidget(Button.builder(Component.literal(ls[i]), b -> as[i].run())
+                    .bounds(bx, y, ws[i], 18).build());
+            bx += ws[i] + gap;
         }
     }
 
@@ -69,72 +81,66 @@ public class EasyTierConfigScreen extends Screen {
         boolean running = proc != null && proc.isRunning();
         String ver = NativeLoader.getCurrentVersion();
 
-        // Status header
-        int statusColor = !NativeLoader.isInstalled() ? 0xFF5555 : running ? 0x55FF55 : 0xAAAAAA;
-        String icon = running ? "●" : "○";
-        drawCentered(cx, y, "§7" + icon + " " + (running ? t("easytier.status.running") : NativeLoader.isInstalled() ? t("easytier.status.stopped") : t("easytier.status.not_installed")), statusColor);
+        int sc = !NativeLoader.isInstalled() ? 0xFF5555 : running ? 0x55FF55 : 0xAAAAAA;
+        drawCentered(cx, y, (running ? "● " : "○ ") + (running ? t("easytier.status.running") : NativeLoader.isInstalled() ? t("easytier.status.stopped") : t("easytier.status.not_installed")), sc);
         y += 12;
         drawCentered(cx, y, "§8v" + ver, 0x888888);
         y += 18;
-
-        // Separator
         drawHLine(y); y += 6;
 
-        // Fields
         hostnameField = addRow("hostname", config.hostname, cx, y); y += 20;
         networkNameField = addRow("networkName", config.networkName, cx, y); y += 20;
         networkSecretField = addRow("networkSecret", config.networkSecret, cx, y); y += 20;
         peersField = addRow("peerUrl", config.peers, cx, y); y += 20;
 
-        // IP with DHCP toggle
-        String ipLabel = config.dhcp ? "DHCP" : "IPv4";
-        addText(cx - 150, y + 1, 0xAAAAAA, ipLabel);
+        // IP/DHCP
+        addText(cx - 150, y + 1, 0xAAAAAA, config.dhcp ? "DHCP" : "IPv4");
         if (!config.dhcp) {
             ipv4Field = new EditBox(this.font, cx - 40, y, 100, 14, Component.empty());
-            ipv4Field.setValue(config.ipv4);
-            ipv4Field.setHint(Component.literal("10.1.1.1"));
-            ipv4Field.setMaxLength(15);
-            addRenderableWidget(ipv4Field);
+            ipv4Field.setValue(config.ipv4); ipv4Field.setHint(Component.literal("10.1.1.1"));
+            ipv4Field.setMaxLength(15); addRenderableWidget(ipv4Field);
         }
         addRenderableWidget(Button.builder(Component.literal(config.dhcp ? "Fix IP" : "Auto"),
-                b -> { config.dhcp = !config.dhcp; saveConfig(); build(); })
-                .bounds(cx + 65, y, 40, 14).build());
-        y += 20;
+                b -> { config.dhcp = !config.dhcp; saveConfig(); build(); }).bounds(cx + 65, y, 40, 14).build());
+        y += 22;
 
-        // Big Start/Stop button
         addRenderableWidget(Button.builder(
                 Component.literal(running ? "■ " + t("easytier.stop") : "▶ " + t("easytier.start")),
-                b -> toggleProcess()
-        ).bounds(cx - 55, y, 110, 22).build());
+                b -> toggleProcess()).bounds(cx - 55, y, 110, 22).build());
     }
 
     // ============ ADVANCED PAGE ============
     private void buildAdvanced() {
-        int cx = this.width / 2, y = 26 - scrollY;
-        drawCentered(cx, y, t("easytier.advanced.title"), 0xFFAA00); y += 16;
+        int cx = this.width / 2, y = 26 - scrollY, rh = 16;
+        drawCentered(cx, y, t("easytier.advanced.title"), 0xFFAA00); y += rh + 2;
 
-        // Flags
-        addToggle(cx, y, "encryption", config.enableEncryption, v -> config.enableEncryption = v); y += 17;
-        addToggle(cx, y, "ipv6", config.enableIpv6, v -> config.enableIpv6 = v); y += 17;
-        addToggle(cx, y, "latency_first", config.latencyFirst, v -> config.latencyFirst = v); y += 17;
-        addToggle(cx, y, "kcp_proxy", config.enableKcpProxy, v -> config.enableKcpProxy = v); y += 17;
-        addToggle(cx, y, "quic_proxy", config.enableQuicProxy, v -> config.enableQuicProxy = v); y += 17;
-        addToggle(cx, y, "disable_p2p", config.disableP2p, v -> config.disableP2p = v);
-        y += 8; drawHLine(y - 4); y += 6;
+        // Toggles — compact 2-column if wide enough
+        String[] keys = {"encryption","ipv6","latency_first","kcp_proxy","quic_proxy","disable_p2p"};
+        boolean[] vals = {config.enableEncryption,config.enableIpv6,config.latencyFirst,config.enableKcpProxy,config.enableQuicProxy,config.disableP2p};
+        java.util.function.Consumer<Boolean>[] sets = new java.util.function.Consumer[]{
+            v->config.enableEncryption=v, v->config.enableIpv6=v, v->config.latencyFirst=v,
+            v->config.enableKcpProxy=v, v->config.enableQuicProxy=v, v->config.disableP2p=v
+        };
+        int cols = this.width > 280 ? 2 : 1;
+        for (int i = 0; i < keys.length; i += cols) {
+            for (int j = 0; j < cols && i + j < keys.length; j++) {
+                int x = cols == 2 ? (j == 0 ? cx - 60 : cx + 10) : cx;
+                addToggleAbs(x, y, keys[i+j], vals[i+j], sets[i+j]);
+            }
+            y += rh + 1;
+        }
+        y += 4; drawHLine(y - 2); y += 4;
 
-        // Network fields
-        addRow2("rpc_host", config.rpcHost, cx, y); y += 18;
-        addRow2("rpc_port", String.valueOf(config.rpcPort), cx, y); y += 18;
-        addRow2("listen_url", config.listenUrl, cx, y); y += 18;
-        addRow2("protocol", config.defaultProtocol, cx, y);
-        y += 8; drawHLine(y - 4); y += 6;
+        addRow2("rpc_host", config.rpcHost, cx, y); y += rh + 2;
+        addRow2("rpc_port", String.valueOf(config.rpcPort), cx, y); y += rh + 2;
+        addRow2("listen_url", config.listenUrl, cx, y); y += rh + 2;
+        addRow2("protocol", config.defaultProtocol, cx, y); y += rh + 4;
+        y += 2; drawHLine(y - 2); y += 4;
 
-        // More toggles
-        addToggle(cx, y, "auto_start", config.autoStart, v -> config.autoStart = v); y += 17;
-        addToggle(cx, y, "hud", config.hudEnabled, v -> config.hudEnabled = v); y += 24;
+        addToggle(cx, y, "auto_start", config.autoStart, v -> config.autoStart = v); y += rh + 1;
+        addToggle(cx, y, "hud", config.hudEnabled, v -> config.hudEnabled = v); y += rh + 6;
 
-        maxScroll = Math.max(0, y + scrollY - (this.height - 40));
-        if (scrollY > maxScroll) { scrollY = maxScroll; buildAdvanced(); }
+        maxScroll = y + scrollY - (this.height - 42);
     }
 
     // ============ CORE PAGE ============
@@ -145,27 +151,28 @@ public class EasyTierConfigScreen extends Screen {
         String ext = win ? ".exe" : "";
 
         drawCentered(cx, y, t("easytier.core.title"), 0xFFAA00); y += 16;
-
         String v = NativeLoader.getCurrentVersion();
         drawCentered(cx, y, v, v.equals("not installed") ? 0xFF5555 : 0x55FF55); y += 14;
-
         drawHLine(y); y += 8;
-        drawCentered(cx, y, "Download from GitHub Releases:", 0xAAAAAA); y += 12;
-        drawCentered(cx, y, "github.com/EasyTier/EasyTier/releases", 0xFFFFFF); y += 12;
-        drawCentered(cx, y, "Your platform: " + plat, 0x888888); y += 14;
 
+        drawCentered(cx, y, "Download: github.com/EasyTier/EasyTier/releases", 0xFFFFFF); y += 16;
+        addRenderableWidget(Button.builder(Component.literal("Open in Browser"), b ->
+                Util.getPlatform().openUri("https://github.com/EasyTier/EasyTier/releases"))
+                .bounds(cx - 50, y, 100, 16).build()); y += 20;
+        drawCentered(cx, y, "Platform: " + plat, 0x888888); y += 14;
         drawHLine(y); y += 8;
-        drawCentered(cx, y, "Rename & place in .minecraft/easytier/bin/:", 0xAAAAAA); y += 12;
+
         String core = "easytier-core-" + plat + ext;
         String cli  = "easytier-cli-" + plat + ext;
+        drawCentered(cx, y, "Rename & place in .minecraft/easytier/bin/:", 0xAAAAAA); y += 12;
         drawCentered(cx, y, core + " → easytier-core" + ext, 0x55FF55); y += 12;
-        drawCentered(cx, y, cli + " → easytier-cli" + ext, 0x55FF55); y += 14;
+        drawCentered(cx, y, cli + " → easytier-cli" + ext, 0x55FF55); y += 16;
 
-        y += 2;
-        addRenderableWidget(Button.builder(Component.literal("Open Folder"), b -> openFolder()).bounds(cx - 44, y, 88, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("Open Folder"), b -> openFolder())
+                .bounds(cx - 44, y, 88, 18).build());
     }
 
-    // ============ WIDGET HELPERS ============
+    // ============ WIDGETS ============
     private void addText(int x, int y, int color, String text) {
         addRenderableWidget(new MultiLineTextWidget(x, y, Component.literal(text).withColor(color), this.font));
     }
@@ -178,39 +185,34 @@ public class EasyTierConfigScreen extends Screen {
     }
 
     private EditBox addRow(String key, String val, int cx, int y) {
-        String label = t("easytier." + key);
-        addText(cx - 150, y + 1, 0xAAAAAA, label);
+        addText(cx - 150, y + 1, 0xAAAAAA, t("easytier." + key));
         EditBox f = new EditBox(this.font, cx - 40, y, 150, 14, Component.empty());
         f.setValue(val != null ? val : "");
         f.setHint(Component.literal(t("easytier." + key + ".hint")));
-        f.setMaxLength(256);
-        addRenderableWidget(f);
+        f.setMaxLength(256); addRenderableWidget(f);
         return f;
     }
     private void addRow2(String key, String val, int cx, int y) {
-        String label = t("easytier." + key);
-        addText(cx - 150, y + 1, 0xAAAAAA, label);
+        addText(cx - 150, y + 1, 0xAAAAAA, t("easytier." + key));
         EditBox f = new EditBox(this.font, cx - 40, y, 150, 14, Component.empty());
-        f.setValue(val != null ? val : "");
-        f.setMaxLength(256);
-        addRenderableWidget(f);
+        f.setValue(val != null ? val : ""); f.setMaxLength(256); addRenderableWidget(f);
     }
     private void addToggle(int cx, int y, String key, boolean val, java.util.function.Consumer<Boolean> s) {
-        addRenderableWidget(CycleButton.onOffBuilder(val).create(cx - 55, y, 110, 14,
-                Component.translatable("easytier." + key), (b, v) -> s.accept(v)));
+        addToggleAbs(cx - 55, y, key, val, s);
     }
-    private void bbtn(int x, int y, int w, String label, Runnable a) {
-        addRenderableWidget(Button.builder(Component.literal(label), b -> a.run()).bounds(x, y, w, 18).build());
+    private void addToggleAbs(int x, int y, String key, boolean val, java.util.function.Consumer<Boolean> s) {
+        addRenderableWidget(CycleButton.onOffBuilder(val).create(x, y, 105, 14,
+                Component.translatable("easytier." + key), (b, v) -> s.accept(v)));
     }
 
     // ============ ACTIONS ============
     private String t(String k) { return Component.translatable(k).getString(); }
 
     private void toggleProcess() {
-        saveConfig(); // save all fields before starting
+        saveConfig();
         var p = EasyTierMod.getEasyTierProcess();
         if (p != null && p.isRunning()) {
-            build(); // immediately show "stopping" state
+            build();
             new Thread(() -> { EasyTierMod.stopEasyTier(); build(); }, "ET-stop").start();
         } else {
             EasyTierMod.startEasyTier();
@@ -229,18 +231,11 @@ public class EasyTierConfigScreen extends Screen {
         try {
             String dir = NativeLoader.getBinDir().toAbsolutePath().toString();
             String os = System.getProperty("os.name").toLowerCase();
-            if (os.contains("win")) {
-                new ProcessBuilder("explorer", dir).start();
-            } else if (os.contains("mac")) {
-                new ProcessBuilder("open", dir).start();
-            } else {
-                new ProcessBuilder("xdg-open", dir).start();
-            }
-        } catch (Exception ex) {
-            EasyTierMod.LOGGER.error("Cannot open folder: {}", ex.getMessage());
-        }
+            if (os.contains("win")) new ProcessBuilder("explorer", dir).start();
+            else if (os.contains("mac")) new ProcessBuilder("open", dir).start();
+            else new ProcessBuilder("xdg-open", dir).start();
+        } catch (Exception ex) { EasyTierMod.LOGGER.error("Cannot open folder: {}", ex.getMessage()); }
     }
-
     private void saveAndClose() { saveConfig(); onClose(); }
 
     @Override public void onClose() { saveConfig(); if (minecraft != null) minecraft.setScreen(parent); }
