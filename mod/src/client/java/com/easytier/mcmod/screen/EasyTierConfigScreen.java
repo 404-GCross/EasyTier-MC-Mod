@@ -77,11 +77,12 @@ public class EasyTierConfigScreen extends Screen {
                 btn -> toggleProcess()
         ).bounds(this.width / 2 - 55, botY - 10, 110, 20).build());
 
-        // Four small buttons
-        btn(this.width / 2 - 128, botY + 12, 60, t("easytier.advanced"), () -> buildAdvanced());
-        btn(this.width / 2 - 64, botY + 12, 40, t("easytier.core"), () -> buildCorePage());
-        btn(this.width / 2 - 20, botY + 12, 40, t("easytier.save"), () -> saveAndClose());
-        btn(this.width / 2 + 24, botY + 12, 40, t("easytier.back"), () -> onClose());
+        // Four equal bottom buttons
+        int bw = 48, gap = 3, bx = this.width / 2 - (bw * 4 + gap * 3) / 2;
+        btn(bx, botY + 12, bw, t("easytier.advanced"), () -> buildAdvanced()); bx += bw + gap;
+        btn(bx, botY + 12, bw, t("easytier.core"), () -> buildCorePage()); bx += bw + gap;
+        btn(bx, botY + 12, bw, t("easytier.save"), () -> saveAndClose()); bx += bw + gap;
+        btn(bx, botY + 12, bw, t("easytier.back"), () -> onClose());
     }
 
     // ============ ADVANCED ============
