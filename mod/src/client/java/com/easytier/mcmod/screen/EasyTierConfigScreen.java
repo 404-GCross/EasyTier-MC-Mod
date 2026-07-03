@@ -27,7 +27,7 @@ public class EasyTierConfigScreen extends Screen {
     private int maxScroll = 0;
 
     // Network
-    private EditBox networkNameField, networkSecretField, listenUrlField, rpcHostField, rpcPortField, defaultProtocolField;
+    private EditBox networkNameField, networkSecretField, hostnameField, listenUrlField, rpcHostField, rpcPortField, defaultProtocolField;
     private CycleButton<Boolean> autoStartToggle, encryptionToggle, ipv6Toggle, latencyFirstToggle, kcpToggle, quicToggle, disableP2pToggle;
     // HUD
     private CycleButton<Boolean> hudEnabledToggle;
@@ -60,6 +60,7 @@ public class EasyTierConfigScreen extends Screen {
         y = section(y, "config.easytier-mcmod.section.network");
         networkNameField = addField(y, "config.easytier-mcmod.network_name", config.networkName, 180); y += ROW_HEIGHT;
         networkSecretField = addField(y, "config.easytier-mcmod.network_secret", config.networkSecret, 180); y += ROW_HEIGHT;
+        hostnameField = addField(y, "config.easytier-mcmod.hostname", config.hostname, 150); y += ROW_HEIGHT;
         listenUrlField = addField(y, "config.easytier-mcmod.listen_url", config.listenUrl, 280); y += ROW_HEIGHT;
         rpcHostField = addField(y, "config.easytier-mcmod.rpc_host", config.rpcHost, 120); y += ROW_HEIGHT;
         rpcPortField = addField(y, "config.easytier-mcmod.rpc_port", String.valueOf(config.rpcPort), 60);
@@ -169,6 +170,7 @@ public class EasyTierConfigScreen extends Screen {
         var m = new java.util.HashMap<String, String>();
         if (networkNameField != null) m.put("nn", networkNameField.getValue());
         if (networkSecretField != null) m.put("ns", networkSecretField.getValue());
+        if (hostnameField != null) m.put("hn", hostnameField.getValue());
         if (listenUrlField != null) m.put("lu", listenUrlField.getValue());
         if (rpcHostField != null) m.put("rh", rpcHostField.getValue());
         if (rpcPortField != null) m.put("rp", rpcPortField.getValue());
@@ -184,6 +186,7 @@ public class EasyTierConfigScreen extends Screen {
     private void restoreFieldValues(java.util.Map<String, String> m) {
         if (networkNameField != null && m.containsKey("nn")) networkNameField.setValue(m.get("nn"));
         if (networkSecretField != null && m.containsKey("ns")) networkSecretField.setValue(m.get("ns"));
+        if (hostnameField != null && m.containsKey("hn")) hostnameField.setValue(m.get("hn"));
         if (listenUrlField != null && m.containsKey("lu")) listenUrlField.setValue(m.get("lu"));
         if (rpcHostField != null && m.containsKey("rh")) rpcHostField.setValue(m.get("rh"));
         if (rpcPortField != null && m.containsKey("rp")) rpcPortField.setValue(m.get("rp"));
@@ -299,6 +302,7 @@ public class EasyTierConfigScreen extends Screen {
     private void saveConfig() {
         config.networkName = networkNameField.getValue();
         config.networkSecret = networkSecretField.getValue();
+        config.hostname = hostnameField.getValue();
         config.listenUrl = listenUrlField.getValue();
         config.rpcHost = rpcHostField.getValue();
         try { config.rpcPort = Integer.parseInt(rpcPortField.getValue()); } catch (NumberFormatException ignored) {}

@@ -19,6 +19,7 @@ public class ModConfig {
 
     // ---- EasyTier process settings ----
     public boolean autoStart = true;
+    public String hostname = "";
     public String networkName = "easytier-mc";
     public String networkSecret = "";
     public String listenUrl = "tcp://0.0.0.0:11010";
@@ -89,6 +90,10 @@ public class ModConfig {
         if (!networkSecret.isEmpty()) {
             args.add("--network-secret");
             args.add(networkSecret);
+        }
+        if (!hostname.isEmpty()) {
+            args.add("--hostname");
+            args.add(hostname);
         }
         args.add("--default-protocol");
         args.add(defaultProtocol);
