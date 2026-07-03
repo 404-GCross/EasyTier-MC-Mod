@@ -207,6 +207,7 @@ public class EasyTierConfigScreen extends Screen {
     private String t(String k) { return Component.translatable(k).getString(); }
 
     private void toggleProcess() {
+        saveConfig(); // save all fields before starting
         var p = EasyTierMod.getEasyTierProcess();
         if (p != null && p.isRunning()) {
             build(); // immediately show "stopping" state
