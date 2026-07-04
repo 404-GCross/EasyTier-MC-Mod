@@ -112,22 +112,22 @@ public class EasyTierConfigScreen extends Screen {
                 b -> toggleProcess()).bounds(cx - 55, y, 110, 22).build());
         y += 26;
 
-        // Log line
-        if (proc != null) {
-            var logs = proc.getRecentLogs(1);
-            if (!logs.isEmpty()) {
-                String last = logs.getFirst();
-                if (last.length() > 65) last = last.substring(0, 62) + "...";
-                drawCentered(cx, y, "§8" + last, 0x666666);
-            }
-        }
-        if (!running && NativeLoader.isInstalled()) {
-            drawCentered(cx, y, "§7Click Start to launch", 0x666666);
-        }
+        // Status line below button (only one shown)
         if (startError != null) {
             drawCentered(cx, y, "§c" + startError, 0xFF5555);
         } else if (!NativeLoader.isInstalled()) {
             drawCentered(cx, y, "§cGo to Core page to install binaries", 0xFF6666);
+        } else if (running) {
+            if (proc != null) {
+                var logs = proc.getRecentLogs(1);
+                if (!logs.isEmpty()) {
+                    String last = logs.getFirst();
+                    if (last.length() > 65) last = last.substring(0, 62) + "...";
+                    drawCentered(cx, y, "§8" + last, 0x666666);
+                }
+            }
+        } else {
+            drawCentered(cx, y, "§7Click Start to launch", 0x666666);
         }
     }
 

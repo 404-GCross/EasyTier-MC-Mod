@@ -24,6 +24,7 @@ public class EasyTierProcess {
     private final List<String> recentLogs = new CopyOnWriteArrayList<>();
     private final List<Consumer<String>> logListeners = new CopyOnWriteArrayList<>();
     private static final int MAX_LOG_LINES = 500;
+    private Path logFile = null;
 
     public EasyTierProcess(ModConfig config) {
         this.config = config;
@@ -70,6 +71,15 @@ public class EasyTierProcess {
             running = true;
             recentLogs.add("Process started (PID: " + process.pid() + ")");
 
+            // Setup log file
+            logFile = binDir.getParent().resolve("logs").resolve("easytier.log");
+            java.nio.file.Files.createDirectories(logFile.getParent());
+            java.io.BufferedWriter fileWriter = java.nio.file.Files.newBufferedWriter(logFile,
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            fileWriter.write("=== EasyTier started at " + java.time.Instant.now() + " ===\n");
+            fileWriter.write("> " + fullCmd + "\n");
+            fileWriter.flush();
+
             // Read stdout in background
             outputReader = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(
@@ -80,12 +90,13 @@ public class EasyTierProcess {
                         if (recentLogs.size() > MAX_LOG_LINES) {
                             recentLogs.removeFirst();
                         }
-                        // Notify listeners
+                        try { fileWriter.write(line + "\n"); fileWriter.flush(); } catch (IOException ignored) {}
                         for (Consumer<String> listener : logListeners) {
                             try { listener.accept(line); } catch (Exception ignored) {}
                         }
                         EasyTierMod.LOGGER.debug("[easytier-core] {}", line);
                     }
+                    fileWriter.close();
                 } catch (IOException e) {
                     if (running) {
                         EasyTierMod.LOGGER.error("[EasyTier] Output reader error: {}", e.getMessage());
