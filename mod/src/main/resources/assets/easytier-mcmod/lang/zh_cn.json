@@ -38,6 +38,8 @@
   "easytier.kcp_proxy": "KCP代理",
   "easytier.quic_proxy": "QUIC代理",
   "easytier.disable_p2p": "强制中转",
+  "easytier.no_tun": "无TUN(免管理员)",
+  "easytier.use_smoltcp": "Smoltcp用户态网卡",
   "easytier.rpc_host": "RPC地址",
   "easytier.rpc_port": "RPC端口",
   "easytier.listen_url": "监听地址",

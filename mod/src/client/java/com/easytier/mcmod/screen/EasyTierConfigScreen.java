@@ -149,6 +149,8 @@ public class EasyTierConfigScreen extends Screen {
         addRow2("protocol", config.defaultProtocol, cx, y);
         y += 8; drawHLine(y-4); y += 6;
 
+        addToggle(cx, y, "no_tun", config.noTun, v -> config.noTun = v); y += gap;
+        addToggle(cx, y, "use_smoltcp", config.useSmoltcp, v -> config.useSmoltcp = v); y += gap;
         addToggle(cx, y, "auto_start", config.autoStart, v -> config.autoStart = v); y += gap;
         addToggle(cx, y, "hud", config.hudEnabled, v -> config.hudEnabled = v); y += gap + 10;
 

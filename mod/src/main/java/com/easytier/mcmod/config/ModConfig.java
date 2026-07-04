@@ -35,6 +35,8 @@ public class ModConfig {
     public boolean enableKcpProxy = false;
     public boolean enableQuicProxy = false;
     public boolean disableP2p = false;
+    public boolean noTun = true;    // Use smoltcp instead of TUN device (no admin needed)
+    public boolean useSmoltcp = true;
 
     // ---- HUD settings ----
     public boolean hudEnabled = true;
@@ -123,6 +125,12 @@ public class ModConfig {
         }
         if (disableP2p) {
             args.add("--disable-p2p");
+        }
+        if (noTun) {
+            args.add("--no-tun");
+        }
+        if (useSmoltcp) {
+            args.add("--use-smoltcp");
         }
         if (!listenUrl.isEmpty()) {
             for (String url : listenUrl.split(",")) {
