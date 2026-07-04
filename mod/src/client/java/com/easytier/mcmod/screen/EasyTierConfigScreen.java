@@ -6,6 +6,7 @@ import com.easytier.mcmod.easytier.NativeLoader;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
+import java.nio.file.Path;
 import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -211,6 +212,18 @@ public class EasyTierConfigScreen extends Screen {
             drawCentered(cx, y + 10, t("easytier.logs.not_running"), 0x888888);
             return;
         }
+
+        // Open log file button
+        addRenderableWidget(Button.builder(Component.literal("Open Log File"), b -> {
+            try {
+                Path logDir = NativeLoader.getBinDir().getParent().resolve("logs");
+                java.nio.file.Files.createDirectories(logDir);
+                String os = System.getProperty("os.name").toLowerCase();
+                if (os.contains("win")) new ProcessBuilder("explorer", logDir.toAbsolutePath().toString()).start();
+                else if (os.contains("mac")) new ProcessBuilder("open", logDir.toAbsolutePath().toString()).start();
+                else new ProcessBuilder("xdg-open", logDir.toAbsolutePath().toString()).start();
+            } catch (Exception ex) { EasyTierMod.LOGGER.error("Cannot open log dir: {}", ex.getMessage()); }
+        }).bounds(this.width - 100, 24, 94, 16).build());
 
         var logs = proc.getRecentLogs(500);
         if (logs.isEmpty()) {
