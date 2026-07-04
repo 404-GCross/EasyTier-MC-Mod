@@ -55,7 +55,9 @@ public class EasyTierProcess {
                 command.add(arg);
             }
 
-            EasyTierMod.LOGGER.info("[EasyTier] Starting: {}", String.join(" ", command));
+            String fullCmd = String.join(" ", command);
+            EasyTierMod.LOGGER.info("[EasyTier] Starting: {}", fullCmd);
+            recentLogs.add("> " + fullCmd);
 
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.directory(binDir.getParent().toFile());
@@ -63,6 +65,7 @@ public class EasyTierProcess {
 
             process = pb.start();
             running = true;
+            recentLogs.add("Process started (PID: " + process.pid() + ")");
 
             // Read stdout in background
             outputReader = new Thread(() -> {
@@ -94,10 +97,8 @@ public class EasyTierProcess {
                 try {
                     int exitCode = process.waitFor();
                     running = false;
+                    recentLogs.add("Process exited with code " + exitCode);
                     EasyTierMod.LOGGER.info("[EasyTier] Process exited with code {}", exitCode);
-                    if (exitCode != 0) {
-                        EasyTierMod.LOGGER.warn("[EasyTier] EasyTier process terminated unexpectedly (code {})", exitCode);
-                    }
                 } catch (InterruptedException ignored) {}
             }, "EasyTier-monitor");
             monitor.setDaemon(true);
