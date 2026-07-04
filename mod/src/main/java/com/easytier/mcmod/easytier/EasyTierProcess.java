@@ -45,9 +45,12 @@ public class EasyTierProcess {
             Path binaryPath = binDir.resolve(binaryName);
 
             if (!java.nio.file.Files.exists(binaryPath)) {
-                EasyTierMod.LOGGER.error("[EasyTier] Binary not found at {}. Run /easytier install first.", binaryPath);
+                String msg = "Binary not found: " + binaryPath.toAbsolutePath();
+                EasyTierMod.LOGGER.error("[EasyTier] {}", msg);
+                recentLogs.add("[ERROR] " + msg);
                 return;
             }
+            recentLogs.add("[INFO] Binary: " + binaryPath.toAbsolutePath());
 
             List<String> command = new ArrayList<>();
             command.add(binaryPath.toAbsolutePath().toString());
@@ -107,7 +110,9 @@ public class EasyTierProcess {
             EasyTierMod.LOGGER.info("[EasyTier] Process started successfully");
         } catch (IOException e) {
             running = false;
-            EasyTierMod.LOGGER.error("[EasyTier] Failed to start process: {}", e.getMessage());
+            String msg = "Start error: " + e.getMessage();
+            EasyTierMod.LOGGER.error("[EasyTier] {}", msg);
+            recentLogs.add("[ERROR] " + msg);
         }
     }
 

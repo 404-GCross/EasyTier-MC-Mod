@@ -207,12 +207,16 @@ public class EasyTierConfigScreen extends Screen {
         drawCentered(cx, y, t("easytier.logs.title"), 0xFFAA00); y += 18;
 
         var proc = EasyTierMod.getEasyTierProcess();
-        if (proc == null || !proc.isRunning()) {
+        if (proc == null) {
             drawCentered(cx, y + 10, t("easytier.logs.not_running"), 0x888888);
             return;
         }
 
         var logs = proc.getRecentLogs(500);
+        if (logs.isEmpty()) {
+            drawCentered(cx, y + 10, "No output yet. Process may still be starting.", 0x888888);
+            return;
+        }
         y -= scrollY;
         for (String line : logs) {
             if (line.length() > 70) line = line.substring(0, 67) + "...";
