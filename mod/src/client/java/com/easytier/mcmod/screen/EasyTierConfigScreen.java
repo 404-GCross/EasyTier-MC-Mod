@@ -124,7 +124,9 @@ public class EasyTierConfigScreen extends Screen {
         if (!running && NativeLoader.isInstalled()) {
             drawCentered(cx, y, "§7Click Start to launch", 0x666666);
         }
-        if (!NativeLoader.isInstalled()) {
+        if (startError != null) {
+            drawCentered(cx, y, "§c" + startError, 0xFF5555);
+        } else if (!NativeLoader.isInstalled()) {
             drawCentered(cx, y, "§cGo to Core page to install binaries", 0xFF6666);
         }
     }
@@ -253,14 +255,18 @@ public class EasyTierConfigScreen extends Screen {
     // ============ ACTIONS ============
     private String t(String k) { return Component.translatable(k).getString(); }
 
+    private String startError = null;
+
     private void toggleProcess() {
         saveConfig();
         var p = EasyTierMod.getEasyTierProcess();
         if (p != null && p.isRunning()) {
+            startError = null;
             build();
             new Thread(() -> { EasyTierMod.stopEasyTier(); build(); }, "ET-stop").start();
         } else {
-            EasyTierMod.startEasyTier();
+            boolean ok = EasyTierMod.startEasyTier();
+            startError = ok ? null : "Start failed - check logs";
             build();
         }
     }

@@ -25,7 +25,7 @@ public class ModConfig {
     public String listenUrl = "tcp://0.0.0.0:11010";
     public String peers = "";
     public String ipv4 = "";
-    public boolean dhcp = true;
+    public boolean dhcp = false;
     public boolean enableEncryption = true;
     public boolean enableIpv6 = true;
 

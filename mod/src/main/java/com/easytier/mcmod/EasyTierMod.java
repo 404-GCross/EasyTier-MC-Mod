@@ -42,17 +42,18 @@ public class EasyTierMod implements ModInitializer {
         return config;
     }
 
-    public static void startEasyTier() {
+    public static boolean startEasyTier() {
         if (!NativeLoader.isInstalled()) {
             LOGGER.warn("[EasyTier] Cannot start: binaries not installed");
-            return;
+            return false;
         }
         if (easyTierProcess != null && easyTierProcess.isRunning()) {
             LOGGER.warn("[EasyTier] EasyTier is already running");
-            return;
+            return true;
         }
         easyTierProcess = new EasyTierProcess(config);
         easyTierProcess.start();
+        return easyTierProcess.isRunning();
     }
 
     public static void stopEasyTier() {
