@@ -108,11 +108,11 @@ public class ModConfig {
         args.add("easytier0");
         args.add("--rpc-portal");
         args.add(rpcHost + ":" + rpcPort);
-        if (enableEncryption) {
-            args.add("--enable-encryption");
+        if (!enableEncryption) {
+            args.add("--disable-encryption");
         }
-        if (enableIpv6) {
-            args.add("--enable-ipv6");
+        if (!enableIpv6) {
+            args.add("--disable-ipv6");
         }
         if (latencyFirst) {
             args.add("--latency-first");
